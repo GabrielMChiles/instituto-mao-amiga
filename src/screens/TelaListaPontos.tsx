@@ -1,22 +1,33 @@
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { pontosMock } from '../data/pontosMock';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { pontosMock, Ponto } from '../data/pontosMock';
 
 export default function TelaListaPontos({ navigation }: any) {
+  
+  // Função de renderização extraída para manter o JSX limpo e performático
+  const renderizarPonto = ({ item }: { item: Ponto }) => (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('DetalhePonto', { pontoId: item.id })}
+    >
+      <Text style={styles.titulo}>{item.nome}</Text>
+      <Text style={styles.subTexto}>Toque para ver mais ›</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.headerTitle}>Locais de Coleta</Text>
-      {pontosMock.map((ponto) => (
-        <TouchableOpacity
-          key={ponto.id}
-          style={styles.card}
-          onPress={() => navigation.navigate('DetalhePonto', { pontoId: ponto.id })}
-        >
-          <Text style={styles.titulo}>{ponto.nome}</Text>
-          <Text style={styles.subTexto}>Toque para ver mais ›</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+      
+      <FlatList
+        data={pontosMock}
+        keyExtractor={(item) => item.id}
+        renderItem={renderizarPonto}
+        // Propriedades recomendadas para performance
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
+    </View>
   );
 }
 
