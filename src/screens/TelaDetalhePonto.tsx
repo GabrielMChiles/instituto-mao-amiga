@@ -6,7 +6,7 @@ export default function TelaDetalhePonto({ route }: any) {
   const { pontoId } = route.params;
   const ponto = pontosMock.find((p) => p.id === pontoId);
 
-  // Null Pointer Defense
+  // Caso não encontrar nenhum ponto
   if (!ponto) {
     return (
       <View style={styles.containerCenter}>

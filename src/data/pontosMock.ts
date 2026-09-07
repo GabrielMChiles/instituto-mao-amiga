@@ -1,10 +1,4 @@
-export type Ponto = {
-  id: string;
-  nome: string;
-  endereco: string;
-  horario: string;
-  itens: string;
-};
+import { Ponto } from "../models/Ponto";
 
 // Fonte de dados
 export const pontosMock: Ponto[] = [
@@ -15,7 +9,14 @@ export const pontosMock: Ponto[] = [
   { id: '5', nome: 'Ponto Vila Nova', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
   { id: '6', nome: 'Ponto Marista', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
   { id: '7', nome: 'Ponto Parque Amazônia', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
-  { id: '8', nome: 'Ponto Aeroporto', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' }
-
-
+  { id: '8', nome: 'Ponto Setor Oeste', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '9', nome: 'Ponto Setor Sul', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '10', nome: 'Ponto Jardim Goiás', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '11', nome: 'Ponto Guanabara', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '12', nome: 'Ponto Campinas', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '13', nome: 'Ponto Pedro Ludovico', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '14', nome: 'Ponto Bela Vista', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '15', nome: 'Ponto Negrão de Lima', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '16', nome: 'Ponto Jardim Atlântico', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' },
+  { id: '17', nome: 'Ponto Aeroporto', endereco: 'Praça da Paz, 789', horario: 'Seg-Qua 10h-16h', itens: 'Roupas e Brinquedos' }
 ];

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { pontosMock, Ponto } from '../data/pontosMock';
+import { pontosMock } from '../data/pontosMock';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ponto } from '../models/Ponto';
 
 const normalizarString = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -46,7 +47,7 @@ export default function TelaListaPontos({ navigation }: any) {
       return nomeNorm.includes(buscaNorm) || itensNorm.includes(buscaNorm);
     });
   }, [termoDebounced]);
-
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
