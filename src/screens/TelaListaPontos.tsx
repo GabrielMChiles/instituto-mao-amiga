@@ -3,9 +3,16 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList } from 'r
 import { pontosMock } from '../data/pontosMock';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ponto } from '../models/Ponto';
+import { Doacao } from '../models/Doacao';
 
 const normalizarString = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
+
+type Props = {
+  navigation: any;
+  pontos: Ponto[];
+  onAdicionarPonto: (ponto: Ponto) => void;
 };
 
 function PontoItem({ ponto, navigation }: { ponto: Ponto; navigation: any }) {
@@ -59,6 +66,13 @@ export default function TelaListaPontos({ navigation }: any) {
           value={inputBusca}
           onChangeText={setInputBusca}
         />
+
+        <TouchableOpacity 
+          style={styles.botaoCadastro} 
+          onPress={() => navigation.navigate('TelaFormularioDoacao')}
+        >
+          <Text style={styles.textoBotao}>+ Cadastrar Nova Doação</Text>
+        </TouchableOpacity>
         
         <FlatList
           data={pontosFiltrados}
@@ -83,6 +97,9 @@ const styles = StyleSheet.create({
     height: 50, backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 16,
     marginBottom: 16, borderWidth: 1, borderColor: '#E0E0E0', fontSize: 16
   },
+  botaoCadastro: 
+  { backgroundColor: '#27AE60', height: 50, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 16, elevation: 2 },
+  textoBotao: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   textoVazio: { textAlign: 'center', marginTop: 24, fontSize: 16, color: '#7F8C8D' },
   card: { backgroundColor: '#FFF', padding: 16, marginBottom: 12, borderRadius: 8, elevation: 2 },
   titulo: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 },

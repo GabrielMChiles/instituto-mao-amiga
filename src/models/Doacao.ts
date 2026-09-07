@@ -1,7 +1,7 @@
 export type Doacao = {  
   id: string;
   tipoItem: TipoDoacao;
-  quantidade: Number;
+  quantidade: number;
   pontoDestinoId: string;
   descricao: string; 
 }
