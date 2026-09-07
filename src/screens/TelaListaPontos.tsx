@@ -19,7 +19,7 @@ function PontoItem({ ponto, navigation }: { ponto: Ponto; navigation: any }) {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('DetalhePonto', { pontoId: ponto.id })}
+      onPress={() => navigation.navigate('TelaDetalhePonto', { pontoId: ponto.id })}
       activeOpacity={0.8}
     >
       <Text style={styles.titulo}>{ponto.nome}</Text>

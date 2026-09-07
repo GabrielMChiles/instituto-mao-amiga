@@ -52,7 +52,7 @@ export default function App() {
           options={{ title: 'Detalhes' }}
         >
           {/* INJEÇÃO DE DEPENDÊNCIA */}
-          {(props) => <TelaDetalhePonto {...props} doacoes={doacoes} />}
+          {(props) => <TelaDetalhePonto {...props} doacoes={doacoes} pontos={pontosMock} />}
         </Stack.Screen>
 
       </Stack.Navigator>
