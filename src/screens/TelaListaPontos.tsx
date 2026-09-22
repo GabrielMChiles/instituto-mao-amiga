@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1B3A5C', marginBottom: 16 },
   inputBusca: {
-    height: 50, backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 16,
+    minHeight: 50, backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 16,
     marginBottom: 16, borderWidth: 1, borderColor: '#E0E0E0', fontSize: 16
   },
   botaoCadastro: 
