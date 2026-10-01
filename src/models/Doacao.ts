@@ -1,9 +1,10 @@
-export type Doacao = {  
+export interface Doacao {
   id: string;
   tipoItem: TipoDoacao;
   quantidade: number;
   pontoDestinoId: string;
-  descricao: string; 
+  descricao: string;
+  criadoEm: string; // Sempre salvo em formato ISO 8601 (ex: "2026-10-01T20:00:00.000Z")
 }
 
 // contrato fixo do tipo de doacao

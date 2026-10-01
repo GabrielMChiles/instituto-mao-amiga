@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TipoDoacao, OPCOES_TIPO_DOACAO, Doacao } from '../models/Doacao';
 import { Ponto } from '../models/Ponto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { salvarDoacao } from '../storage/doacoesStorage';
 
 const CHAVE_RASCUNHO = '@mao_amiga:rascunho_doacao';
 
@@ -88,29 +89,26 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
     return true;
   };
 
-  const salvarDoacao = async () => {
-    if (!validarFormulario()) return;
+  const executarSalvamento = async () => {
+  if (!validarFormulario()) return;
 
-    const novaDoacao: Doacao = {
-      id: Date.now().toString(), // Gambiarra temporária
+  try {
+    await salvarDoacao({
       tipoItem: tipoItem as TipoDoacao,
       quantidade: Number(quantidade),
       pontoDestinoId,
       descricao: descricao.trim(),
-    };
+    });
 
-    onAdicionarDoacao(novaDoacao);
-    
-    // Limpeza garantida após sucesso
-    try {
-      await AsyncStorage.removeItem(CHAVE_RASCUNHO);
-    } catch (error) {
-      console.error("Erro ao limpar rascunho após salvar:", error);
-    }
+    // Limpa o rascunho temporário do formulário
+    await AsyncStorage.removeItem(CHAVE_RASCUNHO);
 
     Keyboard.dismiss();
     navigation.goBack();
-  };
+  } catch (err) {
+    Alert.alert('Erro', 'Ocorreu uma falha ao salvar sua doação. Tente novamente.');
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -170,7 +168,7 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
 
         {erro !== '' && <Text style={styles.erro}>{erro}</Text>}
 
-        <TouchableOpacity style={styles.botaoSalvar} onPress={salvarDoacao}>
+        <TouchableOpacity style={styles.botaoSalvar} onPress={executarSalvamento}>
           <Text style={styles.textoBotao}>Confirmar Doação</Text>
         </TouchableOpacity>
 
