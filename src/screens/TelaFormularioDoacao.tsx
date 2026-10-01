@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TipoDoacao, OPCOES_TIPO_DOACAO, Doacao } from '../models/Doacao';
 import { Ponto } from '../models/Ponto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const CHAVE_RASCUNHO = '@mao_amiga:rascunho_doacao';
 
 type Props = {
   navigation: any;
@@ -17,6 +20,47 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
   const [quantidade, setQuantidade] = useState('');
   const [descricao, setDescricao] = useState('');
   const [erro, setErro] = useState('');
+
+  useEffect(() => {
+    async function carregarRascunho() {
+      try {
+        const salvo = await AsyncStorage.getItem(CHAVE_RASCUNHO);
+        if (!salvo) return;
+
+        const rascunho = JSON.parse(salvo);
+        setTipoItem(rascunho.tipoItem || '');
+        setPontoDestinoId(rascunho.pontoDestinoId || '');
+        setQuantidade(rascunho.quantidade || '');
+        setDescricao(rascunho.descricao || '');
+
+      } catch (error) {
+        console.error("Dado corrompido detectado no rascunho. Executando limpeza...", error);
+        // Se falhou ao fazer a limpeza no disco, deleta a chave imediatamente.
+        await AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(e => 
+          console.error("Falha catastrófica ao tentar limpar o disco", e)
+        );
+      }
+    }
+    carregarRascunho();
+  }, []);
+
+    // 2. SALVAR RASCUNHO AUTOMATICAMENTE (Com Debounce para proteger a performance)
+    useEffect(() => {
+    // Só salva se houver algo digitado (evita sobrescrever com vazio no primeiro render)
+    if (!tipoItem && !pontoDestinoId && !quantidade && !descricao) return;
+
+    // Debounce: Aguarda o usuário parar de digitar por 500ms antes de acessar o disco
+    const timer = setTimeout(() => {
+      const rascunho = { tipoItem, pontoDestinoId, quantidade, descricao };
+      AsyncStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)).catch(error => {
+        console.error("Falha ao salvar rascunho:", error);
+      });
+    }, 500);
+
+    // Função de limpeza do useEffect cancela o timer anterior se o usuário voltar a digitar
+    return () => clearTimeout(timer);
+  }, [tipoItem, pontoDestinoId, quantidade, descricao]);
+
 
   // Função Pura de Validação Estrutural
   const validarFormulario = (): boolean => {
@@ -44,11 +88,11 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
     return true;
   };
 
-  const salvarDoacao = () => {
+  const salvarDoacao = async () => {
     if (!validarFormulario()) return;
 
     const novaDoacao: Doacao = {
-      id: Date.now().toString(), // Refatorar depois
+      id: Date.now().toString(), // Gambiarra temporária
       tipoItem: tipoItem as TipoDoacao,
       quantidade: Number(quantidade),
       pontoDestinoId,
@@ -56,8 +100,16 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
     };
 
     onAdicionarDoacao(novaDoacao);
+    
+    // Limpeza garantida após sucesso
+    try {
+      await AsyncStorage.removeItem(CHAVE_RASCUNHO);
+    } catch (error) {
+      console.error("Erro ao limpar rascunho após salvar:", error);
+    }
+
     Keyboard.dismiss();
-    navigation.goBack(); // Retorna à lista automaticamente
+    navigation.goBack();
   };
 
   return (
