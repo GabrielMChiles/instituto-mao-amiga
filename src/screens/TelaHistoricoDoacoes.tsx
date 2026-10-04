@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react';
-import { View, FlatList, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import { View, FlatList, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform, KeyboardAvoidingView, TextInput } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // Importe do tipo da stack
 
@@ -19,38 +19,33 @@ export default function TelaHistoricoDoacoes() {
   const navigation = useNavigation<TelaHistoricoNavProp>();
   
   const [doacoes, setDoacoes] = useState<Doacao[]>([]);
-  // DICIONÁRIO O(1): Evita buscar o nome do ponto em um loop custoso na FlatList
+  // DICIONÁRIO O(1): Evita buscar o nome do ponto em um loop na FlatList
   const [mapaPontos, setMapaPontos] = useState<Record<string, string>>({});
   
   // PROTEÇÃO DE I/O: Impede que a tela tente desenhar listas vazias enquanto o banco processa
   const [carregando, setCarregando] = useState(true);
 
-  // LIFECYCLE DE TELA: Garante que os dados sejam recarregados ao voltar da tela de Cadastro
+  const [termoBusca, setTermoBusca] = useState('');
+
   useFocusEffect(
     useCallback(() => {
-      let telaAtiva = true; // Evita memory leaks se o usuário mudar de tela muito rápido
+      let telaAtiva = true;
 
       async function carregarDados() {
         setCarregando(true);
         try {
-          // Busca de dados Assíncrona. 
-          const [historico, pontos] = await Promise.all([
-            listarDoacoes(),
-            Promise.resolve(pontosMock as Ponto[]) // Simula latência de rede/banco
-          ]);
-
+          const historico = await listarDoacoes();
+          
           if (!telaAtiva) return;
 
-          // Criação do dicionário em vez de usar .find() no renderItem
           const dicionario: Record<string, string> = {};
-          pontos.forEach((ponto) => {
+          pontosMock.forEach((ponto: Ponto) => {
              dicionario[ponto.id] = ponto.nome;
           });
 
           setMapaPontos(dicionario);
           setDoacoes(historico);
         } catch (error) {
-          // Em produção, nunca se engole exceções. Elas devem ser logadas para auditoria.
           console.error("Erro ao ler banco de dados:", error);
         } finally {
           if (telaAtiva) setCarregando(false);
@@ -58,15 +53,25 @@ export default function TelaHistoricoDoacoes() {
       }
 
       carregarDados();
-
       return () => { telaAtiva = false; };
     }, [])
   );
 
-  // Feedback visual obrigatório enquanto a Promise não resolve
+  // 2. FILTRAGEM INSTANTÂNEA EM MEMÓRIA (Derived State)
+  const doacoesFiltradas = useMemo(() => {
+    // Retorno imediato (O(1)) se não houver busca
+    if (!termoBusca.trim()) return doacoes;
+
+    const termoNormalizado = termoBusca.toLowerCase().trim();
+
+    return doacoes.filter((doacao) => 
+      doacao.tipoItem?.toLowerCase().includes(termoNormalizado)
+    );
+  }, [doacoes, termoBusca]);
+
   if (carregando) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, styles.centralizado]}>
         <ActivityIndicator size="large" color={tema.cores.primaria} />
         <Text>Acessando banco de dados...</Text>
       </View>
@@ -74,35 +79,57 @@ export default function TelaHistoricoDoacoes() {
   }
 
   return (
-  <SafeAreaView style={styles.safeArea}>
-    <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.botaoCadastro} 
-        onPress={() => navigation.navigate('TelaFormularioDoacao')}
+    <SafeAreaView style={styles.safeArea}>
+      {/* 3. PROTEÇÃO CONTRA O TECLADO (Requisito de Aceite) */}
+      <KeyboardAvoidingView
+        style={styles.container} 
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.textoBotao}>+ Cadastrar Nova Doação</Text>
-      </TouchableOpacity>
-      
-      <FlatList
-        data={doacoes}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ItemDoacao 
-            doacao={item} 
-            nomePontoDestino={mapaPontos[item.pontoDestinoId] || 'Ponto Desconhecido'} 
-            // INJEÇÃO DA AÇÃO: A tela sabe navegar, o item não.
-            onPress={() => navigation.navigate('TelaDetalheDoacao', { doacao: item })}
+        {/* CABEÇALHO COM A BUSCA */}
+        <View style={styles.header}>
+          <TextInput
+            style={styles.inputBusca}
+            placeholder="Buscar por tipo de item (ex: roupa)..."
+            value={termoBusca}
+            onChangeText={setTermoBusca}
+            autoCorrect={false}
+            clearButtonMode="while-editing" // Apenas iOS: adiciona o 'X' para limpar
           />
-        )}
-        ListEmptyComponent={
-          <View style={styles.listaVazia}>
-             <Text style={styles.textoVazio}>Você ainda não registrou nenhuma doação.</Text>
-          </View>
-        }
-        contentContainerStyle={doacoes.length === 0 ? styles.listaVaziaContainer : styles.listaPreenchida}
-      />
-    </View>
-  </SafeAreaView>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.botaoCadastro} 
+          onPress={() => navigation.navigate('TelaFormularioDoacao')}
+        >
+          <Text style={styles.textoBotao}>+ Cadastrar Nova Doação</Text>
+        </TouchableOpacity>
+        
+        <FlatList
+          data={doacoesFiltradas}
+          keyExtractor={(item) => item.id}
+          // COMPORTAMENTO DO TECLADO: Oculta ao rolar, permite toques fora
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => (
+            <ItemDoacao 
+              doacao={item} 
+              nomePontoDestino={mapaPontos[item.pontoDestinoId] || 'Ponto Desconhecido'} 
+              onPress={() => navigation.navigate('TelaDetalheDoacao', { doacao: item })}
+            />
+          )}
+          contentContainerStyle={doacoesFiltradas.length === 0 ? styles.listaVaziaContainer : styles.listaPreenchida}
+          ListEmptyComponent={
+            <View style={styles.listaVazia}>
+               <Text style={styles.textoVazio}>
+                 {termoBusca.trim() 
+                   ? `Nenhuma doação encontrada para "${termoBusca}".` 
+                   : 'Você ainda não registrou nenhuma doação.'}
+               </Text>
+            </View>
+          }
+        />
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -115,62 +142,35 @@ export const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: tema.cores.fundo,
   },
-  centralizado: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  centralizado: { justifyContent: 'center', alignItems: 'center' },
+  header: {
+    paddingHorizontal: tema.espacamento.m,
+    paddingTop: tema.espacamento.m,
+  },
+  inputBusca: {
+    backgroundColor: tema.cores.cartao,
+    borderWidth: 1,
+    borderColor: tema.cores.borda,
+    borderRadius: tema.bordas.padrao,
+    padding: tema.espacamento.m,
+    fontSize: tema.tipografia.tamanho.corpo,
+    color: tema.cores.textoForte,
   },
   botaoCadastro: {
     backgroundColor: tema.cores.sucesso,
-    margin: tema.espacamento.m  ,
+    margin: tema.espacamento.m,
     minHeight: tema.acessibilidade.alvoMinimo,
     borderRadius: tema.bordas.padrao,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
   },
   textoBotao: {
     color: tema.cores.cartao,
     fontSize: tema.tipografia.tamanho.subtitulo,
     fontWeight: tema.tipografia.peso.negrito,
   },
-  listaPreenchida: {
-    padding: tema.espacamento.m,
-  },
-  listaVazia: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: tema.espacamento.g,
-  },
-    listaVaziaContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: tema.espacamento.g,
-  },
-  textoVazio: {
-    fontSize: tema.tipografia.tamanho.subtitulo,
-    color: tema.cores.textoSuave,
-    textAlign: 'center',
-    marginTop: tema.espacamento.m,
-  },
-  botaoFlutuante: {
-    position: 'absolute',
-    bottom: tema.espacamento.g,
-    right: tema.espacamento.g,
-    backgroundColor: tema.cores.primaria,
-    minWidth: tema.acessibilidade.alvoMinimo,
-    minHeight: tema.acessibilidade.alvoMinimo,
-    paddingHorizontal: tema.espacamento.m,
-    paddingVertical: tema.espacamento.m,
-    borderRadius: tema.bordas.arredondada,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-  },
-  textoBotaoFlutuante: {
-    color: tema.cores.cartao,
-    fontWeight: tema.tipografia.peso.negrito,
-    fontSize: tema.tipografia.tamanho.corpo,
-  }
+  listaPreenchida: { paddingHorizontal: tema.espacamento.m, paddingBottom: tema.espacamento.g },
+  listaVaziaContainer: { flexGrow: 1 },
+  listaVazia: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: tema.espacamento.g },
+  textoVazio: { fontSize: tema.tipografia.tamanho.subtitulo, color: tema.cores.textoSuave, textAlign: 'center' },
 });
