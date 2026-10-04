@@ -48,3 +48,14 @@ export async function salvarDoacao(
     throw new Error('Não foi possível salvar a doação no armazenamento local.');
   }
 }
+
+export async function excluirDoacao(id: string): Promise<void> {
+  try {
+    const doacoes = await listarDoacoes();
+    const doacoesFiltradas = doacoes.filter((d) => d.id !== id);
+    await AsyncStorage.setItem(CHAVE_HISTORICO_DOACOES, JSON.stringify(doacoesFiltradas));
+  } catch (error) {
+    console.error('[doacoesStorage] Erro ao excluir doação:', error);
+    throw new Error('Não foi possível excluir a doação do armazenamento.');
+  }
+}
