@@ -1,43 +1,66 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, Alert, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 
-import { excluirDoacao } from '../storage/doacoesStorage';
-import { pontosMock } from '../data/pontosMock';
 import { RootStackParamList } from '../navigation/Navigation';
+import { Doacao } from '../models/Doacao';
+import { excluirDoacao, obterDoacaoPorId } from '../storage/doacoesStorage';
+import { pontosMock } from '../data/pontosMock';
 import { tema } from '../themes';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalheDoacao'>;
 
 export default function TelaDetalheDoacao({ route, navigation }: Props) {
-  const { doacao } = route.params;
+  // 1. ESTADO LOCAL: Inicializa com o parâmetro de rota, mas permite reidratação reativa
+  const [doacao, setDoacao] = useState<Doacao>(route.params.doacao);
   const [excluindo, setExcluindo] = useState(false);
 
-  // RESOLUÇÃO DE NOME DO PONTO: Dicionário em memória O(1)
+  // 2. REIDRATAÇÃO DE ESTADO: Recarrega os dados do Storage sempre que a tela ganha foco
+  useFocusEffect(
+    useCallback(() => {
+      let telaAtiva = true;
+
+      async function sincronizarDoacao() {
+        const doacaoAtualizada = await obterDoacaoPorId(route.params.doacao.id);
+        
+        if (telaAtiva && doacaoAtualizada) {
+          // Atualiza o estado local com os dados recém-salvos no AsyncStorage
+          setDoacao(doacaoAtualizada);
+        }
+      }
+
+      sincronizarDoacao();
+
+      return () => {
+        telaAtiva = false;
+      };
+    }, [route.params.doacao.id])
+  );
+
+  // RESOLUÇÃO DINÂMICA DO PONTO DE DESTINO
   const nomePontoDestino = useMemo(() => {
     const ponto = pontosMock.find((p) => p.id === doacao.pontoDestinoId);
     return ponto ? ponto.nome : 'Ponto não identificado';
   }, [doacao.pontoDestinoId]);
 
-  // FORMATAÇÃO SEGURA DE DATA (Null Pointer Defense)
+  // FORMATAÇÃO SEGURA DE DATA
   const dataFormatada = useMemo(() => {
     if (!doacao?.criadoEm) return 'Data não registrada';
     const data = new Date(doacao.criadoEm);
     return isNaN(data.getTime()) ? 'Data inválida' : data.toLocaleDateString('pt-BR');
   }, [doacao?.criadoEm]);
 
-  // AÇÃO DE EXCLUSÃO COM TRATAMENTO DE ERRO E PESSIMISTIC UI
   async function confirmarExclusao() {
     setExcluindo(true);
     try {
       await excluirDoacao(doacao.id);
-      // Retorna ao histórico apenas após sucesso confirmado no disco
       navigation.goBack();
     } catch (error) {
       setExcluindo(false);
       Alert.alert(
         'Erro ao Excluir',
-        'Ocorreu uma falha ao tentar remover a doação do armazenamento local. Tente novamente.'
+        'Ocorreu uma falha ao tentar remover a doação localmente. Tente novamente.'
       );
     }
   }
@@ -45,24 +68,11 @@ export default function TelaDetalheDoacao({ route, navigation }: Props) {
   function handleSolicitarExclusao() {
     Alert.alert(
       'Confirmar Exclusão',
-      'Tem certeza de que deseja apagar esta doação do seu histórico? Esta ação não pode ser desfeita.',
+      'Tem certeza de que deseja apagar esta doação? Esta ação não pode ser desfeita.',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Excluir', 
-          style: 'destructive', 
-          onPress: confirmarExclusao 
-        },
+        { text: 'Excluir', style: 'destructive', onPress: confirmarExclusao },
       ]
-    );
-  }
-
-  // Null Pointer Defense caso o parâmetro chegue corrompido
-  if (!doacao) {
-    return (
-      <View style={[styles.container, styles.centralizado]}>
-        <Text style={styles.textoErro}>Erro ao carregar detalhes da doação.</Text>
-      </View>
     );
   }
 
@@ -97,6 +107,14 @@ export default function TelaDetalheDoacao({ route, navigation }: Props) {
       {/* ÁREA DE AÇÕES */}
       <View style={styles.containerAcoes}>
         <TouchableOpacity
+          style={styles.botaoEditar}
+          onPress={() => navigation.navigate('TelaFormularioDoacao', { doacaoParaEditar: doacao })}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.textoBotaoEditar}>Editar Doação</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.botaoExcluir, excluindo && styles.botaoDesabilitado]}
           onPress={handleSolicitarExclusao}
           disabled={excluindo}
@@ -119,31 +137,17 @@ const styles = StyleSheet.create({
     backgroundColor: tema.cores.fundo,
     padding: tema.espacamento.m,
   },
-  centralizado: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  textoErro: {
-    color: tema.cores.perigo,
-    fontSize: tema.tipografia.tamanho.subtitulo,
-  },
   card: {
     backgroundColor: tema.cores.cartao,
     padding: tema.espacamento.m,
     borderRadius: tema.bordas.padrao,
     borderColor: tema.cores.borda,
     borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   titulo: {
     fontSize: tema.tipografia.tamanho.titulo,
     fontWeight: tema.tipografia.peso.negrito,
     color: tema.cores.textoForte,
-    marginBottom: tema.espacamento.p,
   },
   divisor: {
     height: 1,
@@ -160,10 +164,22 @@ const styles = StyleSheet.create({
   valor: {
     fontSize: tema.tipografia.tamanho.subtitulo,
     color: tema.cores.textoForte,
-    fontWeight: '500',
   },
   containerAcoes: {
     marginTop: tema.espacamento.xg,
+    gap: tema.espacamento.p,
+  },
+  botaoEditar: {
+    backgroundColor: tema.cores.aviso,
+    minHeight: tema.acessibilidade.alvoMinimo,
+    borderRadius: tema.bordas.padrao,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textoBotaoEditar: {
+    color: tema.cores.cartao,
+    fontSize: tema.tipografia.tamanho.subtitulo,
+    fontWeight: tema.tipografia.peso.negrito,
   },
   botaoExcluir: {
     backgroundColor: tema.cores.perigo,
@@ -171,7 +187,6 @@ const styles = StyleSheet.create({
     borderRadius: tema.bordas.padrao,
     justifyContent: 'center',
     alignItems: 'center',
-    alignSelf: 'stretch',
   },
   botaoDesabilitado: {
     opacity: 0.6,
