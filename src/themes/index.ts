@@ -4,6 +4,7 @@ export const tema = {
     secundaria: '#2196F3',
     sucesso: '#4CAF50',
     perigo: '#C62828', // Para botões de excluir/erros
+    aviso: '#e1e42b', // Para botões de excluir/erros
     fundo: '#F5F7FA', // Cinza muito claro para fundo de telas
     cartao: '#FFFFFF', // Fundo de cards
     textoForte: '#111827',

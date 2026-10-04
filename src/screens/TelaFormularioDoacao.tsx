@@ -1,28 +1,52 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Keyboard, Alert } from 'react-native';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
+import { 
+  View, Text, TextInput, TouchableOpacity, ScrollView, 
+  Alert, Keyboard, StyleSheet 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TipoDoacao, OPCOES_TIPO_DOACAO, Doacao } from '../models/Doacao';
-import { Ponto } from '../models/Ponto';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { salvarDoacao } from '../storage/doacoesStorage';
+
+import { RootStackParamList } from '../navigation/Navigation';
+import { Doacao, TipoDoacao } from '../models/Doacao';
+import { Ponto } from '../models/Ponto';
+import { salvarDoacao, atualizarDoacao } from '../storage/doacoesStorage';
+import { pontosMock } from '../data/pontosMock';
+import { tema } from '../themes';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
 const CHAVE_RASCUNHO = '@mao_amiga:rascunho_doacao';
 
-type Props = {
-  navigation: any;
-  pontos: Ponto[];
-  onAdicionarDoacao: (doacao: Doacao) => void;
-};
+const OPCOES_TIPO_DOACAO: { label: string; value: TipoDoacao }[] = [
+  { label: 'Alimento', value: 'ALIMENTO' },
+  { label: 'Roupas', value: 'ROUPA' },
+  { label: 'Brinquedos', value: 'BRINQUEDO' },
+  { label: 'Outros', value: 'OUTRO' },
+];
 
-export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDoacao }: Props) {
-  // Estados do Formulário
-  const [tipoItem, setTipoItem] = useState<TipoDoacao | ''>('');
-  const [pontoDestinoId, setPontoDestinoId] = useState('');
-  const [quantidade, setQuantidade] = useState('');
-  const [descricao, setDescricao] = useState('');
+export default function TelaFormularioDoacao({ route, navigation }: Props) {
+  const doacaoParaEditar = route.params?.doacaoParaEditar;
+  const modoEdicao = Boolean(doacaoParaEditar);
+
+  // Inicialização de Estado Condicional (Edição vs Novo Registro)
+  const [tipoItem, setTipoItem] = useState<TipoDoacao | ''>(doacaoParaEditar?.tipoItem || '');
+  const [pontoDestinoId, setPontoDestinoId] = useState(doacaoParaEditar?.pontoDestinoId || '');
+  const [quantidade, setQuantidade] = useState(doacaoParaEditar ? String(doacaoParaEditar.quantidade) : '');
+  const [descricao, setDescricao] = useState(doacaoParaEditar?.descricao || '');
   const [erro, setErro] = useState('');
 
+  // 1. TÍTULO DINÂMICO DA TELA
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: modoEdicao ? 'Editar Doação' : 'Cadastrar Doação',
+    });
+  }, [navigation, modoEdicao]);
+
+  // 2. CARREGAR RASCUNHO (Apenas no Modo Cadastro)
   useEffect(() => {
+    if (modoEdicao) return; // ISOLAMENTO: Não carrega rascunho se for edição!
+
     async function carregarRascunho() {
       try {
         const salvo = await AsyncStorage.getItem(CHAVE_RASCUNHO);
@@ -33,37 +57,26 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
         setPontoDestinoId(rascunho.pontoDestinoId || '');
         setQuantidade(rascunho.quantidade || '');
         setDescricao(rascunho.descricao || '');
-
       } catch (error) {
-        console.error("Dado corrompido detectado no rascunho. Executando limpeza...", error);
-        // Se falhou ao fazer a limpeza no disco, deleta a chave imediatamente.
-        await AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(e => 
-          console.error("Falha catastrófica ao tentar limpar o disco", e)
-        );
+        await AsyncStorage.removeItem(CHAVE_RASCUNHO).catch(() => {});
       }
     }
     carregarRascunho();
-  }, []);
+  }, [modoEdicao]);
 
-    // 2. SALVAR RASCUNHO AUTOMATICAMENTE (Com Debounce para proteger a performance)
-    useEffect(() => {
-    // Só salva se houver algo digitado (evita sobrescrever com vazio no primeiro render)
+  // 3. SALVAR RASCUNHO AUTOMÁTICO (Apenas no Modo Cadastro)
+  useEffect(() => {
+    if (modoEdicao) return; // ISOLAMENTO: Não salva rascunho se for edição!
     if (!tipoItem && !pontoDestinoId && !quantidade && !descricao) return;
 
-    // Debounce: Aguarda o usuário parar de digitar por 500ms antes de acessar o disco
     const timer = setTimeout(() => {
       const rascunho = { tipoItem, pontoDestinoId, quantidade, descricao };
-      AsyncStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)).catch(error => {
-        console.error("Falha ao salvar rascunho:", error);
-      });
+      AsyncStorage.setItem(CHAVE_RASCUNHO, JSON.stringify(rascunho)).catch(() => {});
     }, 500);
 
-    // Função de limpeza do useEffect cancela o timer anterior se o usuário voltar a digitar
     return () => clearTimeout(timer);
-  }, [tipoItem, pontoDestinoId, quantidade, descricao]);
+  }, [tipoItem, pontoDestinoId, quantidade, descricao, modoEdicao]);
 
-
-  // Função Pura de Validação Estrutural
   const validarFormulario = (): boolean => {
     if (!tipoItem) {
       setErro('Selecione o tipo de doação.');
@@ -90,31 +103,42 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
   };
 
   const executarSalvamento = async () => {
-  if (!validarFormulario()) return;
+    if (!validarFormulario()) return;
 
-  try {
-    await salvarDoacao({
-      tipoItem: tipoItem as TipoDoacao,
-      quantidade: Number(quantidade),
-      pontoDestinoId,
-      descricao: descricao.trim(),
-    });
+    try {
+      if (modoEdicao && doacaoParaEditar) {
+        // FLUXO DE ATUALIZAÇÃO
+        const doacaoAtualizada: Doacao = {
+          ...doacaoParaEditar, // Preserva id e data de criação originais
+          tipoItem: tipoItem as TipoDoacao,
+          pontoDestinoId,
+          quantidade: Number(quantidade),
+          descricao: descricao.trim(),
+        };
+        await atualizarDoacao(doacaoAtualizada);
+      } else {
+        // FLUXO DE CRIAÇÃO
+        await salvarDoacao({
+          tipoItem: tipoItem as TipoDoacao,
+          quantidade: Number(quantidade),
+          pontoDestinoId,
+          descricao: descricao.trim(),
+        });
+        // Limpa o rascunho após salvar o novo item
+        await AsyncStorage.removeItem(CHAVE_RASCUNHO);
+      }
 
-    // Limpa o rascunho temporário do formulário
-    await AsyncStorage.removeItem(CHAVE_RASCUNHO);
-
-    Keyboard.dismiss();
-    navigation.goBack();
-  } catch (err) {
-    Alert.alert('Erro', 'Ocorreu uma falha ao salvar sua doação. Tente novamente.');
-  }
-};
+      Keyboard.dismiss();
+      navigation.goBack();
+    } catch (err) {
+      Alert.alert('Erro', 'Ocorreu uma falha ao salvar sua doação. Tente novamente.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         
-        {/* SEÇÃO 1: Tipo de Doação (Chips) */}
         <Text style={styles.label}>O que você quer doar?</Text>
         <View style={styles.chipContainer}>
           {OPCOES_TIPO_DOACAO.map((opcao) => (
@@ -130,10 +154,9 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
           ))}
         </View>
 
-        {/* SEÇÃO 2: Destino (Chips Simples) */}
         <Text style={styles.label}>Para qual ponto de coleta?</Text>
         <View style={styles.chipContainer}>
-          {pontos.map((ponto) => (
+          {pontosMock.map((ponto: Ponto) => (
             <TouchableOpacity
               key={ponto.id}
               style={[styles.chip, pontoDestinoId === ponto.id && styles.chipSelecionado]}
@@ -146,7 +169,6 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
           ))}
         </View>
 
-        {/* SEÇÃO 3: Quantidade e Descrição */}
         <Text style={styles.label}>Quantidade (Unidades)</Text>
         <TextInput
           style={styles.input}
@@ -169,7 +191,9 @@ export default function TelaFormularioDoacao({ navigation, pontos, onAdicionarDo
         {erro !== '' && <Text style={styles.erro}>{erro}</Text>}
 
         <TouchableOpacity style={styles.botaoSalvar} onPress={executarSalvamento}>
-          <Text style={styles.textoBotao}>Confirmar Doação</Text>
+          <Text style={styles.textoBotao}>
+            {modoEdicao ? 'Salvar Alterações' : 'Confirmar Doação'}
+          </Text>
         </TouchableOpacity>
 
       </ScrollView>

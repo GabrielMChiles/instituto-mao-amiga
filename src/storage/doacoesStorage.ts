@@ -19,6 +19,16 @@ export async function listarDoacoes(): Promise<Doacao[]> {
   }
 }
 
+export async function obterDoacaoPorId(id: string): Promise<Doacao | null> {
+  try {
+    const doacoes = await listarDoacoes();
+    return doacoes.find((d) => d.id === id) || null;
+  } catch (error) {
+    console.error('[doacoesStorage] Erro ao buscar doação por ID:', error);
+    return null;
+  }
+}
+
 /**
  * Insere uma nova doação no array existente sem sobrescrever os registros anteriores.
  * A geração de ID e Timestamp ocorre no próprio repositório para garantir consistência.
@@ -46,6 +56,24 @@ export async function salvarDoacao(
   } catch (error) {
     console.error('[doacoesStorage] Erro ao persistir nova doação:', error); //
     throw new Error('Não foi possível salvar a doação no armazenamento local.');
+  }
+}
+
+export async function atualizarDoacao(doacaoAtualizada: Doacao): Promise<void> {
+  try {
+    const dados = await AsyncStorage.getItem(CHAVE_HISTORICO_DOACOES);
+    const doacoes: Doacao[] = dados ? JSON.parse(dados) : [];
+    
+    const index = doacoes.findIndex((d) => d.id === doacaoAtualizada.id);
+    if (index === -1) {
+      throw new Error('Registro de doação não encontrado no armazenamento.');
+    }
+
+    doacoes[index] = doacaoAtualizada;
+    await AsyncStorage.setItem(CHAVE_HISTORICO_DOACOES, JSON.stringify(doacoes));
+  } catch (error) {
+    console.error('[doacoesStorage] Erro ao atualizar doação:', error);
+    throw new Error('Falha ao atualizar doação no disco.');
   }
 }
 

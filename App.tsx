@@ -40,16 +40,8 @@ export default function App() {
 
         <Stack.Screen 
           name="TelaFormularioDoacao" 
-          options={{ title: 'Cadastre uma Doação' }}
-        >
-          {(props) => (
-            <TelaFormularioDoacao 
-              {...props} 
-              pontos={pontosMock} 
-              onAdicionarDoacao={adicionarDoacao}
-            />
-          )}
-        </Stack.Screen>
+          component={TelaFormularioDoacao} 
+        />
 
         <Stack.Screen 
           name="TelaDetalhePonto" 
