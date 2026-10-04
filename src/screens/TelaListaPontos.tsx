@@ -4,6 +4,7 @@ import { pontosMock } from '../data/pontosMock';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ponto } from '../models/Ponto';
 import { Doacao } from '../models/Doacao';
+import { tema } from '../themes';
 
 const normalizarString = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -68,10 +69,10 @@ export default function TelaListaPontos({ navigation }: any) {
         />
 
         <TouchableOpacity 
-          style={styles.botaoCadastro} 
-          onPress={() => navigation.navigate('TelaFormularioDoacao')}
+          style={styles.botaoDoacoes} 
+          onPress={() => navigation.navigate('TelaHistoricoDoacoes')}
         >
-          <Text style={styles.textoBotao}>+ Cadastrar Nova Doação</Text>
+          <Text style={styles.textoBotao}>Doações</Text>
         </TouchableOpacity>
         
         <FlatList
@@ -97,11 +98,14 @@ const styles = StyleSheet.create({
     minHeight: 50, backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 16,
     marginBottom: 16, borderWidth: 1, borderColor: '#E0E0E0', fontSize: 16
   },
-  botaoCadastro: 
-  { backgroundColor: '#27AE60', height: 50, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 16, elevation: 2 },
+  botaoDoacoes: 
+  { backgroundColor: tema.cores.primaria, height: 50, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 16, elevation: 2 },
   textoBotao: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
   textoVazio: { textAlign: 'center', marginTop: 24, fontSize: 16, color: '#7F8C8D' },
-  card: { backgroundColor: '#FFF', padding: 16, marginBottom: 12, borderRadius: 8, elevation: 2 },
+  card: { 
+    backgroundColor: '#FFF', padding: 16, marginBottom: 12, 
+    borderRadius: 8, 
+    elevation: 2 },
   titulo: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 },
   textoSecundario: { fontSize: 14, color: '#4A4A4A', marginBottom: 2 },
   acaoTexto: { fontSize: 12, color: '#2980B9', marginTop: 8, fontWeight: 'bold' }

@@ -8,11 +8,13 @@ import TelaFormularioDoacao from './src/screens/TelaFormularioDoacao';
 import { Doacao } from './src/models/Doacao';
 import { doacoesMock } from './src/data/doacoesMock';
 import { pontosMock } from './src/data/pontosMock';
+import TelaHistoricoDoacoes from './src/screens/TelaHistoricoDoacoes';
 
 export type RootStackParamList = {
   TelaListaPontos: undefined;
   TelaDetalhePonto: { pontoId: string };
   TelaFormularioDoacao: undefined;
+  TelaHistoricoDoacoes: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -54,6 +56,20 @@ export default function App() {
           {/* INJEÇÃO DE DEPENDÊNCIA */}
           {(props) => <TelaDetalhePonto {...props} doacoes={doacoes} pontos={pontosMock} />}
         </Stack.Screen>
+
+        <Stack.Screen 
+          name={"TelaHistoricoDoacoes"} 
+          component={TelaHistoricoDoacoes} 
+          options={{ title: 'Minhas Doações' }} 
+        />
+
+          
+
+
+
+
+
+
 
       </Stack.Navigator>
     </NavigationContainer>
