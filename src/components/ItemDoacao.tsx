@@ -1,14 +1,15 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Doacao } from '../models/Doacao';
 import { tema } from '../themes';
 
 interface Props {
   doacao: Doacao;
   nomePontoDestino: string;
+  onPress: () => void;
 }
 
-const ItemDoacao = ({ doacao, nomePontoDestino }: Props) => {
+const ItemDoacao = ({ doacao, nomePontoDestino, onPress }: Props) => {
   // 1. NULL POINTER DEFENSE: Evita crash da renderização se a prop vier corrompida
   if (!doacao) {
     return null;
@@ -26,14 +27,21 @@ const ItemDoacao = ({ doacao, nomePontoDestino }: Props) => {
   }, [doacao.criadoEm]);
 
   return (
-  
     <View style={styles.card}>
+      <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+
       <Text style={styles.tipo}>{doacao.tipoItem || 'Item não especificado'}</Text>
       <Text style={styles.texto}>Quantidade: {doacao.quantidade ?? 0}</Text>
       <Text style={styles.texto}>Descrição: {doacao.descricao || 'Descrição não identificada'}</Text>
       <Text style={styles.texto}>Destino: {nomePontoDestino || 'Ponto não identificado'}</Text>
       <Text style={styles.data}>{dataFormatada}</Text>
+      </TouchableOpacity>
     </View>
+    
   );
 };
 

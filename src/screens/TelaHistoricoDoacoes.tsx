@@ -89,10 +89,17 @@ export default function TelaHistoricoDoacoes() {
         renderItem={({ item }) => (
           <ItemDoacao 
             doacao={item} 
-            // Acesso direto O(1) na memória. Muito mais rápido que array.find()
             nomePontoDestino={mapaPontos[item.pontoDestinoId] || 'Ponto Desconhecido'} 
+            // INJEÇÃO DA AÇÃO: A tela sabe navegar, o item não.
+            onPress={() => navigation.navigate('TelaDetalheDoacao', { doacao: item })}
           />
         )}
+        ListEmptyComponent={
+          <View style={styles.listaVazia}>
+             <Text style={styles.textoVazio}>Você ainda não registrou nenhuma doação.</Text>
+          </View>
+        }
+        contentContainerStyle={doacoes.length === 0 ? styles.listaVaziaContainer : styles.listaPreenchida}
       />
     </View>
   </SafeAreaView>
