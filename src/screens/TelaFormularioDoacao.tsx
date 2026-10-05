@@ -13,6 +13,7 @@ import { Ponto } from '../models/Ponto';
 import { salvarDoacao, atualizarDoacao } from '../storage/doacoesStorage';
 import { pontosMock } from '../data/pontosMock';
 import { tema } from '../themes';
+import { Ionicons } from '@expo/vector-icons';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaFormularioDoacao'>;
 
@@ -154,21 +155,6 @@ export default function TelaFormularioDoacao({ route, navigation }: Props) {
           ))}
         </View>
 
-        <Text style={styles.label}>Para qual ponto de coleta?</Text>
-        <View style={styles.chipContainer}>
-          {pontosMock.map((ponto: Ponto) => (
-            <TouchableOpacity
-              key={ponto.id}
-              style={[styles.chip, pontoDestinoId === ponto.id && styles.chipSelecionado]}
-              onPress={() => setPontoDestinoId(ponto.id)}
-            >
-              <Text style={[styles.chipTexto, pontoDestinoId === ponto.id && styles.chipTextoSelecionado]}>
-                {ponto.nome}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
         <Text style={styles.label}>Quantidade (Unidades)</Text>
         <TextInput
           style={styles.input}
@@ -187,6 +173,23 @@ export default function TelaFormularioDoacao({ route, navigation }: Props) {
           multiline
           numberOfLines={3}
         />
+
+
+        <Text style={styles.label}>Para qual ponto de coleta?</Text>
+        <View style={styles.chipContainer}>
+          {pontosMock.map((ponto: Ponto) => (
+            <TouchableOpacity
+              key={ponto.id}
+              style={[styles.chip, pontoDestinoId === ponto.id && styles.chipSelecionado]}
+              onPress={() => setPontoDestinoId(ponto.id)}
+            >
+              <Text style={[styles.chipTexto, pontoDestinoId === ponto.id && styles.chipTextoSelecionado]}>
+                {ponto.nome}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
 
         {erro !== '' && <Text style={styles.erro}>{erro}</Text>}
 
