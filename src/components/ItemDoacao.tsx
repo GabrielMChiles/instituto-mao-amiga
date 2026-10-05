@@ -27,20 +27,18 @@ const ItemDoacao = ({ doacao, nomePontoDestino, onPress }: Props) => {
   }, [doacao.criadoEm]);
 
   return (
-    <View style={styles.card}>
       <TouchableOpacity
-      style={styles.card}
+      style={styles.card} 
       onPress={onPress}
       activeOpacity={0.8}
     >
 
-      <Text style={styles.tipo}>{doacao.tipoItem || 'Item não especificado'}</Text>
-      <Text style={styles.texto}>Quantidade: {doacao.quantidade ?? 0}</Text>
-      <Text style={styles.texto}>Descrição: {doacao.descricao || 'Descrição não identificada'}</Text>
-      <Text style={styles.texto}>Destino: {nomePontoDestino || 'Ponto não identificado'}</Text>
+      <Text style={styles.tipoItem}>{doacao.tipoItem || 'Item não especificado'}</Text>
+      <Text style={styles.detalhe}>Quantidade: {doacao.quantidade ?? 0}</Text>
+      <Text style={styles.detalhe}>Descrição: {doacao.descricao || 'Descrição não identificada'}</Text>
+      <Text style={styles.detalhe}>Destino: {nomePontoDestino || 'Ponto não identificado'}</Text>
       <Text style={styles.data}>{dataFormatada}</Text>
       </TouchableOpacity>
-    </View>
     
   );
 };
@@ -51,41 +49,32 @@ export default React.memo(ItemDoacao);
 export const styles = StyleSheet.create({
   card: {
     backgroundColor: tema.cores.cartao,
-    padding: tema.espacamento.m,
-    marginBottom: tema.espacamento.m,
     borderRadius: tema.bordas.padrao,
     borderWidth: 1,
     borderColor: tema.cores.borda,
-    // Sombra sutil para destacar o card
+    padding: tema.espacamento.m,
+    marginBottom: tema.espacamento.m,
+    // Sombreamento sutil sem dependência de containers externos
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 2, // Sombra no Android
   },
-  cabecalho: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: tema.espacamento.p,
-  },
-  tipo: {
+  tipoItem: {
     fontSize: tema.tipografia.tamanho.subtitulo,
     fontWeight: tema.tipografia.peso.negrito,
     color: tema.cores.textoForte,
+    marginBottom: 4,
   },
-  texto: {
+  detalhe: {
     fontSize: tema.tipografia.tamanho.corpo,
     color: tema.cores.textoForte,
-    marginTop: 4,
+    marginBottom: 2,
   },
   data: {
     fontSize: tema.tipografia.tamanho.pequeno,
     color: tema.cores.textoSuave,
-  },
-  linhaDetalhe: {
-    fontSize: tema.tipografia.tamanho.corpo,
-    color: tema.cores.textoForte,
     marginTop: 4,
-  }
+  },
 });
