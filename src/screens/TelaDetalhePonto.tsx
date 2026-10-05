@@ -52,7 +52,7 @@ export default function TelaDetalhePonto({ route, pontos, doacoes }: Props) {
         <Text style={styles.texto}>🕒 {ponto.horario}</Text>
       </View>
 
-      {/* SEÇÃO 2: Lista de Estoque (Relacionamento 1 para N) */}
+      {/* SEÇÃO 2: Lista de Estoque (Relacionamento 1 para N) 
       <Text style={styles.subtitulo}>Estoque Atual de Doações</Text>
       <FlatList
         data={estoqueLocal}
@@ -63,7 +63,7 @@ export default function TelaDetalhePonto({ route, pontos, doacoes }: Props) {
         ListEmptyComponent={
           <Text style={styles.textoVazio}>Nenhuma doação registrada para este local ainda.</Text>
         }
-      />
+      />*/}
     </View>
   );
 }

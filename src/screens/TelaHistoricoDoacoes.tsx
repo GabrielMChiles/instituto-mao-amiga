@@ -24,12 +24,96 @@ import { tema } from '../themes';
 
 type TelaHistoricoNavProp = NativeStackNavigationProp<RootStackParamList, 'TelaHistoricoDoacoes'>;
 
-// Interface para a estrutura do Resumo Agrupado
 interface ResumoAgrupado {
   tipo: string;
   quantidadeTotal: number;
   qtdDoacoes: number;
 }
+
+interface HeaderResumoProps {
+  totalGeralDoacoes: number;
+  agrupado: ResumoAgrupado[];
+  termoBusca: string;
+  onChangeBusca: (texto: string) => void;
+  onNavegarCadastro: () => void;
+}
+
+// 1. ISOLAMENTO DO COMPONENTE FORA DO CORPO DA TELA
+// Impede a destruição do nó nativo do TextInput durante as re-renderizações do pai.
+const HeaderResumo = React.memo(({ 
+  totalGeralDoacoes, 
+  agrupado, 
+  termoBusca, 
+  onChangeBusca, 
+  onNavegarCadastro 
+}: HeaderResumoProps) => {
+  return (
+    <View style={styles.headerContainer}>
+      {/* CARD DE RESUMO DAS DOAÇÕES */}
+      <View style={styles.cardResumo}>
+        <Text style={styles.tituloCardResumo}>Resumo das doações</Text>
+        
+        <View style={styles.containerTotalGeral}>
+          <Text style={styles.numeroTotalGeral}>{totalGeralDoacoes}</Text>
+          <Text style={styles.legendaTotalGeral}>
+            {totalGeralDoacoes === 1 ? 'doação registrada' : 'doações registradas'}
+          </Text>
+        </View>
+
+        <View style={styles.divisorResumo} />
+
+        {totalGeralDoacoes === 0 ? (
+          <Text style={styles.textoResumoVazio}>Nenhuma doação registrada ainda.</Text>
+        ) : (
+          <View style={styles.listaTiposResumo}>
+            {agrupado.map((item, index) => {
+              const pluralUnidade = item.quantidadeTotal === 1 ? 'unidade' : 'unidades';
+              const pluralDoacao = item.qtdDoacoes === 1 ? 'doação' : 'doações';
+
+              return (
+                <React.Fragment key={item.tipo}>
+                  <View style={styles.itemTipoResumo}>
+                    <Text style={styles.nomeTipoResumo}>{item.tipo}</Text>
+                    <Text style={styles.detalheTipoResumo}>
+                      {item.quantidadeTotal.toLocaleString('pt-BR')} {pluralUnidade} · {item.qtdDoacoes} {pluralDoacao}
+                    </Text>
+                  </View>
+
+                  {index < agrupado.length - 1 && <View style={styles.separadorSutilItem} />}
+                </React.Fragment>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      {/* LINHA DE BUSCA + BOTÃO DE CADASTRO */}
+      <View style={styles.linhaBuscaECadastro}>
+        <TextInput
+          style={styles.inputBusca}
+          placeholder="Buscar por tipo de item..."
+          placeholderTextColor={tema.cores.textoSuave}
+          value={termoBusca}
+          onChangeText={onChangeBusca}
+          autoCorrect={false}
+          clearButtonMode="while-editing"
+        />
+
+        <TouchableOpacity 
+          style={styles.botaoAdicionarQuadrado} 
+          onPress={onNavegarCadastro}
+          activeOpacity={0.8}
+          accessibilityLabel="Cadastrar nova doação"
+        >
+          <Text style={styles.textoBotaoAdicionar}>+</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* IDENTIFICAÇÃO DE SEÇÃO */}
+      <Text style={styles.tituloSecao}>DOAÇÕES REGISTRADAS</Text>
+    </View>
+  );
+});
 
 export default function TelaHistoricoDoacoes() {
   const navigation = useNavigation<TelaHistoricoNavProp>();
@@ -39,7 +123,6 @@ export default function TelaHistoricoDoacoes() {
   const [carregando, setCarregando] = useState(true);
   const [termoBusca, setTermoBusca] = useState('');
 
-  // RECARREGAMENTO DE DADOS AO GANHAR FOCO
   useFocusEffect(
     useCallback(() => {
       let telaAtiva = true;
@@ -48,7 +131,6 @@ export default function TelaHistoricoDoacoes() {
         setCarregando(true);
         try {
           const historico = await listarDoacoes();
-          
           if (!telaAtiva) return;
 
           const dicionario: Record<string, string> = {};
@@ -70,7 +152,7 @@ export default function TelaHistoricoDoacoes() {
     }, [])
   );
 
-  // 1. ESTADO DERIVADO: CÁLCULO DO RESUMO GLOBAL (Independente do Termo de Busca)
+  // CÁLCULO DO RESUMO GLOBAL (Derivado)
   const resumoGlobal = useMemo(() => {
     const totalGeralDoacoes = doacoes.length;
 
@@ -78,7 +160,6 @@ export default function TelaHistoricoDoacoes() {
       return { totalGeralDoacoes: 0, agrupado: [] };
     }
 
-    // Agrupamento por tipo de item
     const mapaAgrupamento = new Map<string, { quantidadeTotal: number; qtdDoacoes: number }>();
 
     doacoes.forEach((item) => {
@@ -92,7 +173,6 @@ export default function TelaHistoricoDoacoes() {
       });
     });
 
-    // Conversão para array e ordenação decrescente por quantidade total
     const agrupado: ResumoAgrupado[] = Array.from(mapaAgrupamento.entries())
       .map(([tipo, dados]) => ({
         tipo,
@@ -101,13 +181,10 @@ export default function TelaHistoricoDoacoes() {
       }))
       .sort((a, b) => b.quantidadeTotal - a.quantidadeTotal);
 
-    return {
-      totalGeralDoacoes,
-      agrupado,
-    };
+    return { totalGeralDoacoes, agrupado };
   }, [doacoes]);
 
-  // 2. ESTADO DERIVADO: LISTA FILTRADA PARA EXIBIÇÃO
+  // FILTRAGEM DA LISTA (Derivada)
   const doacoesFiltradas = useMemo(() => {
     if (!termoBusca.trim()) return doacoes;
 
@@ -117,79 +194,9 @@ export default function TelaHistoricoDoacoes() {
     );
   }, [doacoes, termoBusca]);
 
-  // RENDERIZADOR DO CABEÇALHO DA FLATLIST (Resumo + Busca + Título da Lista)
-  const renderListHeader = () => {
-    const { totalGeralDoacoes, agrupado } = resumoGlobal;
-
-    return (
-      <View style={styles.headerContainer}>
-        
-        {/* CARD DE RESUMO DAS DOAÇÕES */}
-        <View style={styles.cardResumo}>
-          <Text style={styles.tituloCardResumo}>Resumo das doações</Text>
-          
-          <View style={styles.containerTotalGeral}>
-            <Text style={styles.numeroTotalGeral}>{totalGeralDoacoes}</Text>
-            <Text style={styles.legendaTotalGeral}>
-              {totalGeralDoacoes === 1 ? 'doação registrada' : 'doações registradas'}
-            </Text>
-          </View>
-
-          <View style={styles.divisorResumo} />
-
-          {totalGeralDoacoes === 0 ? (
-            <Text style={styles.textoResumoVazio}>Nenhuma doação registrada ainda.</Text>
-          ) : (
-            <View style={styles.listaTiposResumo}>
-              {agrupado.map((item, index) => {
-                const pluralUnidade = item.quantidadeTotal === 1 ? 'unidade' : 'unidades';
-                const pluralDoacao = item.qtdDoacoes === 1 ? 'doação' : 'doações';
-
-                return (
-                  <React.Fragment key={item.tipo}>
-                    <View style={styles.itemTipoResumo}>
-                      <Text style={styles.nomeTipoResumo}>{item.tipo}</Text>
-                      <Text style={styles.detalheTipoResumo}>
-                        {item.quantidadeTotal.toLocaleString('pt-BR')} {pluralUnidade} · {item.qtdDoacoes} {pluralDoacao}
-                      </Text>
-                    </View>
-
-                    {/* Separador sutil entre os itens agrupados */}
-                    {index < agrupado.length - 1 && <View style={styles.separadorSutilItem} />}
-                  </React.Fragment>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* BARRA DE AÇÕES (BUSCA + BOTÃO DE NOVO CADASTRO LADO A LADO) */}
-        <View style={styles.linhaBuscaECadastro}>
-          <TextInput
-            style={styles.inputBusca}
-            placeholder="Buscar por tipo de item..."
-            placeholderTextColor={tema.cores.textoSuave}
-            value={termoBusca}
-            onChangeText={setTermoBusca}
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-          />
-
-          <TouchableOpacity 
-            style={styles.botaoAdicionarQuadrado} 
-            onPress={() => navigation.navigate('TelaFormularioDoacao')}
-            activeOpacity={0.8}
-            accessibilityLabel="Cadastrar nova doação"
-          >
-            <Text style={styles.textoBotaoAdicionar}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* IDENTIFICAÇÃO DE SEÇÃO */}
-        <Text style={styles.tituloSecao}>DOAÇÕES REGISTRADAS</Text>
-      </View>
-    );
-  };
+  const handleNavegarCadastro = useCallback(() => {
+    navigation.navigate('TelaFormularioDoacao');
+  }, [navigation]);
 
   if (carregando) {
     return (
@@ -211,7 +218,17 @@ export default function TelaHistoricoDoacoes() {
           keyExtractor={(item) => item.id}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={renderListHeader}
+          
+          // CABEÇALHO ESTÁVEL: Renderiza como nó JSX mantendo a identidade dos filhos
+          ListHeaderComponent={
+            <HeaderResumo
+              totalGeralDoacoes={resumoGlobal.totalGeralDoacoes}
+              agrupado={resumoGlobal.agrupado}
+              termoBusca={termoBusca}
+              onChangeBusca={setTermoBusca}
+              onNavegarCadastro={handleNavegarCadastro}
+            />
+          }
           renderItem={({ item }) => (
             <ItemDoacao 
               doacao={item} 
@@ -219,9 +236,13 @@ export default function TelaHistoricoDoacoes() {
               onPress={() => navigation.navigate('TelaDetalheDoacao', { doacao: item })}
             />
           )}
-          contentContainerStyle={
-            doacoesFiltradas.length === 0 ? styles.listaVaziaContainer : styles.listaPreenchida
-          }
+          
+          // 2. CORREÇÃO DE ESTILO: O paddingHorizontal NUNCA é removido, mesmo com a lista vazia
+          contentContainerStyle={[
+            styles.containerListaBase,
+            doacoesFiltradas.length === 0 && styles.containerListaVazia
+          ]}
+          
           ListEmptyComponent={
             <View style={styles.listaVazia}>
               <Text style={styles.textoVazio}>
@@ -243,7 +264,6 @@ const styles = StyleSheet.create({
   centralizado: { justifyContent: 'center', alignItems: 'center' },
   textoCarregando: { marginTop: 8, color: tema.cores.textoSuave },
 
-  // ESTRUTURA DO HEADER
   headerContainer: {
     paddingTop: tema.espacamento.m,
   },
@@ -270,9 +290,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  containerTotalGeral: {
-    marginVertical: 4,
-  },
+  containerTotalGeral: { marginVertical: 4 },
   numeroTotalGeral: {
     fontSize: 28,
     fontWeight: tema.tipografia.peso.negrito,
@@ -293,12 +311,8 @@ const styles = StyleSheet.create({
     color: tema.cores.textoSuave,
     fontStyle: 'italic',
   },
-  listaTiposResumo: {
-    gap: 4,
-  },
-  itemTipoResumo: {
-    paddingVertical: 2,
-  },
+  listaTiposResumo: { gap: 4 },
+  itemTipoResumo: { paddingVertical: 2 },
   nomeTipoResumo: {
     fontSize: tema.tipografia.tamanho.corpo,
     fontWeight: tema.tipografia.peso.negrito,
@@ -358,16 +372,16 @@ const styles = StyleSheet.create({
     marginBottom: tema.espacamento.p,
   },
 
-  // LISTA
-  listaPreenchida: { 
-    paddingHorizontal: tema.espacamento.m,
-    paddingBottom: tema.espacamento.g 
+  // 3. ESTILOS DE CONTAINER DA LISTA CORRIGIDOS
+  containerListaBase: {
+    paddingHorizontal: tema.espacamento.m, // Garantido para TODOS os estados da lista!
+    paddingBottom: tema.espacamento.g,
   },
-  listaVaziaContainer: { 
-    flexGrow: 1 
+  containerListaVazia: {
+    flexGrow: 1, // Expande para permitir centralização do estado vazio sem remover o paddingHorizontal
   },
   listaVazia: { 
-    padding: tema.espacamento.g, 
+    paddingVertical: tema.espacamento.xg, 
     justifyContent: 'center', 
     alignItems: 'center' 
   },
