@@ -21,6 +21,7 @@ import { pontosMock } from '../data/pontosMock';
 import { Doacao } from '../models/Doacao';
 import ItemDoacao from '../components/ItemDoacao';
 import { tema } from '../themes';
+import { BotaoComIcone } from '../components/BotaoComIcone';
 
 type TelaHistoricoNavProp = NativeStackNavigationProp<RootStackParamList, 'TelaHistoricoDoacoes'>;
 
@@ -107,6 +108,13 @@ const HeaderResumo = React.memo(({
         >
           <Text style={styles.textoBotaoAdicionar}>+</Text>
         </TouchableOpacity>
+
+        <BotaoComIcone
+          nomeIcone="add"
+          corFundo="tema.cores.sucesso"
+          tamanhoIcone={32}
+          onPress={onNavegarCadastro}
+        />
       </View>
 
       {/* IDENTIFICAÇÃO DE SEÇÃO */}

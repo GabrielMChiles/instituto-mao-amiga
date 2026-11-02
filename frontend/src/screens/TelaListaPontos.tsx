@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ponto } from '../models/Ponto';
 import { Doacao } from '../models/Doacao';
 import { tema } from '../themes';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { BotaoComIcone } from '../components/BotaoComIcone';
 
 const normalizarString = (texto: string) => {
   return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -68,12 +70,12 @@ export default function TelaListaPontos({ navigation }: any) {
           onChangeText={setInputBusca}
         />
 
-        <TouchableOpacity 
-          style={styles.botaoDoacoes} 
-          onPress={() => navigation.navigate('TelaHistoricoDoacoes')}
-        >
-          <Text style={styles.textoBotao}>Doações</Text>
-        </TouchableOpacity>
+        <BotaoComIcone
+          titulo="Ver Minhas Doações" 
+          nomeIcone="heart-outline" 
+          corFundo="#1B3A5C"
+          onPress={() => navigation.navigate('TelaHistoricoDoacoes')} 
+        />
         
         <FlatList
           data={pontosFiltrados}
