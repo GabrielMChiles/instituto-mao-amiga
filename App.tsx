@@ -24,10 +24,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   const [doacoes, setDoacoes] = useState<Doacao[]>(doacoesMock);
 
-  function adicionarDoacao(novaDoacao: Doacao) {
-    setDoacoes((estadoAtual) => [...estadoAtual, novaDoacao]);
-  }
-
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="TelaListaPontos">

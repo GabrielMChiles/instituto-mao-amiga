@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     gap: tema.espacamento.p,
   },
   botaoEditar: {
-    backgroundColor: tema.cores.aviso,
+    backgroundColor: tema.cores.primaria,
     minHeight: tema.acessibilidade.alvoMinimo,
     borderRadius: tema.bordas.padrao,
     justifyContent: 'center',
