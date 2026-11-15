@@ -1,71 +1,62 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, Alert, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { RootStackParamList } from '../navigation/Navigation';
 import { Doacao } from '../models/Doacao';
-import { excluirDoacao, obterDoacaoPorId } from '../storage/doacoesStorage';
-import { pontosMock } from '../data/pontosMock';
 import { tema } from '../themes';
+import { deletarDoacao, getDoacaoPorId } from '../service/doacaoService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalheDoacao'>;
 
 export default function TelaDetalheDoacao({ route, navigation }: Props) {
-  // 1. ESTADO LOCAL: Inicializa com o parâmetro de rota, mas permite reidratação reativa
-  const [doacao, setDoacao] = useState<Doacao>(route.params.doacao);
+  const { id } = route.params;
+  const [doacao, setDoacao] = useState<Doacao | null>(null);
+  const [carregando, setCarregando] = useState(true);
   const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
-  // 2. REIDRATAÇÃO DE ESTADO: Recarrega os dados do Storage sempre que a tela ganha foco
+  // Busca na API sempre que a tela ganha foco, garantindo dados em tempo real
   useFocusEffect(
     useCallback(() => {
-      let telaAtiva = true;
+      let ativo = true;
 
-      async function sincronizarDoacao() {
-        const doacaoAtualizada = await obterDoacaoPorId(route.params.doacao.id);
-        
-        if (telaAtiva && doacaoAtualizada) {
-          // Atualiza o estado local com os dados recém-salvos no AsyncStorage
-          setDoacao(doacaoAtualizada);
+      async function buscarDetalhes() {
+        setCarregando(true);
+        setErro(null);
+        try {
+          const dados = await getDoacaoPorId(id);
+          if (ativo) setDoacao(dados);
+        } catch (err: any) {
+          if (ativo) {
+            setErro('Doação não encontrada (404) ou erro de conexão.');
+          }
+        } finally {
+          if (ativo) setCarregando(false);
         }
       }
 
-      sincronizarDoacao();
-
-      return () => {
-        telaAtiva = false;
-      };
-    }, [route.params.doacao.id])
+      buscarDetalhes();
+      return () => { ativo = false; };
+    }, [id])
   );
 
-  // RESOLUÇÃO DINÂMICA DO PONTO DE DESTINO
-  const nomePontoDestino = useMemo(() => {
-    const ponto = pontosMock.find((p) => p.id === doacao.pontoDestinoId);
-    return ponto ? ponto.nome : 'Ponto não identificado';
-  }, [doacao.pontoDestinoId]);
-
-  // FORMATAÇÃO SEGURA DE DATA
-  const dataFormatada = useMemo(() => {
-    if (!doacao?.criadoEm) return 'Data não registrada';
-    const data = new Date(doacao.criadoEm);
-    return isNaN(data.getTime()) ? 'Data inválida' : data.toLocaleDateString('pt-BR');
-  }, [doacao?.criadoEm]);
-
-  async function confirmarExclusao() {
+  const confirmarExclusao = async () => {
     setExcluindo(true);
     try {
-      await excluirDoacao(doacao.id);
+      await deletarDoacao(id);
+      Alert.alert('Sucesso', 'Doação excluída com sucesso.');
       navigation.goBack();
-    } catch (error) {
+    } catch (err) {
       setExcluindo(false);
-      Alert.alert(
-        'Erro ao Excluir',
-        'Ocorreu uma falha ao tentar remover a doação localmente. Tente novamente.'
-      );
+      // API desligada ao excluir: avisa e não finge que deu certo
+      Alert.alert('Erro', 'A API recusou a exclusão ou está fora do ar. A doação não foi removida.');
     }
-  }
+  };
 
-  function handleSolicitarExclusao() {
+  const handleSolicitarExclusao = () => {
     Alert.alert(
       'Confirmar Exclusão',
       'Tem certeza de que deseja apagar esta doação? Esta ação não pode ser desfeita.',
@@ -74,28 +65,51 @@ export default function TelaDetalheDoacao({ route, navigation }: Props) {
         { text: 'Excluir', style: 'destructive', onPress: confirmarExclusao },
       ]
     );
+  };
+
+  if (carregando) {
+    return (
+      <View style={[styles.container, styles.centralizado]}>
+        <ActivityIndicator size="large" color={tema.cores.primaria} />
+        <Text style={styles.textoCarregando}>Buscando doação na API...</Text>
+      </View>
+    );
   }
+
+  if (erro || !doacao) {
+    return (
+      <View style={[styles.container, styles.centralizado]}>
+        <Ionicons name="alert-circle-outline" size={48} color="#C62828" />
+        <Text style={styles.textoErro}>{erro || 'Doação não encontrada.'}</Text>
+      </View>
+    );
+  }
+
+  const dataFormatada = doacao.criadoEm 
+    ? new Date(doacao.criadoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+    : 'Data não registrada';
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.titulo}>{doacao.tipoItem}</Text>
-        
         <View style={styles.divisor} />
 
         <View style={styles.linhaInfo}>
           <Text style={styles.rotulo}>Quantidade:</Text>
-          <Text style={styles.valor}>{doacao.quantidade}</Text>
+          <Text style={styles.valor}>{doacao.quantidade} unidades</Text>
         </View>
 
-        <View style={styles.linhaInfo}>
-          <Text style={styles.rotulo}>Descrição:</Text>
-          <Text style={styles.valor}>{doacao.descricao}</Text>
-        </View>
+        {doacao.descricao ? (
+          <View style={styles.linhaInfo}>
+            <Text style={styles.rotulo}>Descrição:</Text>
+            <Text style={styles.valor}>{doacao.descricao}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.linhaInfo}>
           <Text style={styles.rotulo}>Ponto de Destino:</Text>
-          <Text style={styles.valor}>{nomePontoDestino}</Text>
+          <Text style={styles.valor}>{doacao.pontoDestino}</Text>
         </View>
 
         <View style={styles.linhaInfo}>
@@ -104,14 +118,14 @@ export default function TelaDetalheDoacao({ route, navigation }: Props) {
         </View>
       </View>
 
-      {/* ÁREA DE AÇÕES */}
       <View style={styles.containerAcoes}>
         <TouchableOpacity
           style={styles.botaoEditar}
           onPress={() => navigation.navigate('TelaFormularioDoacao', { doacaoParaEditar: doacao })}
           activeOpacity={0.8}
         >
-          <Text style={styles.textoBotaoEditar}>Editar Doação</Text>
+          <Ionicons name="create-outline" size={20} color="#FFF" />
+          <Text style={styles.textoBotao}>Editar Doação</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -121,9 +135,12 @@ export default function TelaDetalheDoacao({ route, navigation }: Props) {
           activeOpacity={0.8}
         >
           {excluindo ? (
-            <ActivityIndicator color={tema.cores.cartao} />
+            <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.textoBotaoExcluir}>Excluir Doação</Text>
+            <>
+              <Ionicons name="trash-outline" size={20} color="#FFF" />
+              <Text style={styles.textoBotao}>Excluir Doação</Text>
+            </>
           )}
         </TouchableOpacity>
       </View>
@@ -137,12 +154,14 @@ const styles = StyleSheet.create({
     backgroundColor: tema.cores.fundo,
     padding: tema.espacamento.m,
   },
+  centralizado: { justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: {
     backgroundColor: tema.cores.cartao,
     padding: tema.espacamento.m,
     borderRadius: tema.bordas.padrao,
     borderColor: tema.cores.borda,
     borderWidth: 1,
+    elevation: 2,
   },
   titulo: {
     fontSize: tema.tipografia.tamanho.titulo,
@@ -170,30 +189,31 @@ const styles = StyleSheet.create({
     gap: tema.espacamento.p,
   },
   botaoEditar: {
-    backgroundColor: tema.cores.primaria,
-    minHeight: tema.acessibilidade.alvoMinimo,
+    flexDirection: 'row',
+    backgroundColor: '#2980B9',
+    minHeight: 48,
     borderRadius: tema.bordas.padrao,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  textoBotaoEditar: {
-    color: tema.cores.cartao,
-    fontSize: tema.tipografia.tamanho.subtitulo,
-    fontWeight: tema.tipografia.peso.negrito,
+    gap: 8,
   },
   botaoExcluir: {
+    flexDirection: 'row',
     backgroundColor: tema.cores.perigo,
-    minHeight: tema.acessibilidade.alvoMinimo,
+    minHeight: 48,
     borderRadius: tema.bordas.padrao,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
   },
   botaoDesabilitado: {
     opacity: 0.6,
   },
-  textoBotaoExcluir: {
-    color: tema.cores.cartao,
-    fontSize: tema.tipografia.tamanho.subtitulo,
+  textoBotao: {
+    color: '#FFF',
+    fontSize: 16,
     fontWeight: tema.tipografia.peso.negrito,
   },
+  textoCarregando: { marginTop: 12, color: tema.cores.textoSuave },
+  textoErro: { color: '#C62828', fontSize: 16, textAlign: 'center', marginTop: 12 },
 });

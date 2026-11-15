@@ -5,7 +5,7 @@ export type RootStackParamList = {
   TelaListaPontos: undefined;
   TelaHistoricoDoacoes: undefined;
   TelaFormularioDoacao: { doacaoParaEditar?: Doacao } | undefined;
-  TelaDetalheDoacao: { doacao: Doacao };
+  TelaDetalheDoacao: { id: string };
   TelaDetalhePonto: { id: string };
   TelaFormularioPonto: { pontoParaEditar?: Ponto } | undefined;
 };
