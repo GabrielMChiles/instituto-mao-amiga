@@ -1,16 +1,16 @@
 package br.com.institutomaoamiga.api.controller;
 
-
+import br.com.institutomaoamiga.api.dto.PontoRequestDTO;
+import br.com.institutomaoamiga.api.dto.PontoResponseDTO;
+import br.com.institutomaoamiga.api.service.PontoService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import br.com.institutomaoamiga.api.dto.PontoRequestDTO;
-import br.com.institutomaoamiga.api.dto.PontoResponseDTO;
-import br.com.institutomaoamiga.api.service.PontoService;
-
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -25,8 +25,21 @@ public class PontoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PontoResponseDTO>> listar() {
-        return ResponseEntity.ok(pontoService.listarTodos());
+    public ResponseEntity<Page<PontoResponseDTO>> listarPaginado(
+            @RequestParam(required = false) String filtro,
+            @PageableDefault(size = 10, sort = "nome") Pageable pageable
+    ) {
+        Page<PontoResponseDTO> pagina = pontoService.listarComFiltro(filtro, pageable);
+        return ResponseEntity.ok(pagina);
+    }
+
+    @GetMapping("/filtro")
+    public ResponseEntity<Page<PontoResponseDTO>> filtrarPontos(
+            @RequestParam(required = false) String filtro,
+            @PageableDefault(size = 10, sort = "nome") Pageable pageable
+    ) {
+        Page<PontoResponseDTO> pagina = pontoService.listarComFiltro(filtro, pageable);
+        return ResponseEntity.ok(pagina);
     }
 
     @GetMapping("/{id}")

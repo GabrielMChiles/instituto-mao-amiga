@@ -1,17 +1,17 @@
 package br.com.institutomaoamiga.api.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import br.com.institutomaoamiga.api.dto.PontoRequestDTO;
 import br.com.institutomaoamiga.api.dto.PontoResponseDTO;
 import br.com.institutomaoamiga.api.entity.Ponto;
 import br.com.institutomaoamiga.api.exception.ResourceNotFoundException;
 import br.com.institutomaoamiga.api.repository.PontoRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 public class PontoService {
@@ -23,10 +23,9 @@ public class PontoService {
     }
 
     @Transactional(readOnly = true)
-    public List<PontoResponseDTO> listarTodos() {
-        return pontoRepository.findAll().stream()
-                .map(PontoResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+    public Page<PontoResponseDTO> listarComFiltro(String filtro, Pageable pageable) {
+        Page<Ponto> pontosPage = pontoRepository.buscarPorNomeOuBairro(filtro, pageable);
+        return pontosPage.map(PontoResponseDTO::fromEntity);
     }
 
     @Transactional(readOnly = true)
