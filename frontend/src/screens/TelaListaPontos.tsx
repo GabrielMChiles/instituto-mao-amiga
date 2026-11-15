@@ -1,114 +1,184 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { pontosMock } from '../data/pontosMock';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { 
+  View, 
+  FlatList, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  StyleSheet 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ponto } from '../models/Ponto';
-import { Doacao } from '../models/Doacao';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+
 import { tema } from '../themes';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { BotaoComIcone } from '../components/BotaoComIcone';
+import { RootStackParamList } from '../navigation/Navigation';
+import { Ponto } from '../models/Ponto';
+import { listarPontosPaginados, ultimaPagina } from '../service/pontoService';
 
-const normalizarString = (texto: string) => {
-  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaListaPontos'>;
 
-type Props = {
-  navigation: any;
-  pontos: Ponto[];
-  onAdicionarPonto: (ponto: Ponto) => void;
-};
+export default function TelaListaPontos({ navigation }: Props) {
+  const [pontos, setPontos] = useState<Ponto[]>([]);
+  const [paginaAtual, setPaginaAtual] = useState(0);
+  const [filtro, setFiltro] = useState('');
+  const [carregando, setCarregando] = useState(false);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [fimDaLista, setFimDaLista] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
-function PontoItem({ ponto, navigation }: { ponto: Ponto; navigation: any }) {
-  return (
-    <TouchableOpacity
+  // Função centralizada para carregar dados da API com tratamento de erros de rede
+  const carregarDados = useCallback(async (paginaParaCarregar: number, termoBusca: string, isLoadMore: boolean = false) => {
+    if (isLoadMore) {
+      setCarregandoMais(true);
+    } else {
+      setCarregando(true);
+      setErro(null);
+    }
+
+    try {
+      const resposta = await listarPontosPaginados(paginaParaCarregar, termoBusca, 10);
+      
+      setPontos(prev => isLoadMore ? [...prev, ...resposta.content] : resposta.content);
+      setFimDaLista(ultimaPagina(resposta));
+      setPaginaAtual(resposta.page.number);
+    } catch (err) {
+      setErro('Não foi possível conectar ao servidor. Verifique se a API está ativa e sua conexão de rede.');
+    } finally {
+      setCarregando(false);
+      setCarregandoMais(false);
+    }
+  }, []);
+
+  // Dispara a busca inicial ou quando o filtro muda (reseta para página 0)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      carregarDados(0, filtro, false);
+    }, 400); // Debounce de 400ms para otimizar requisições de busca
+
+    return () => clearTimeout(timer);
+  }, [filtro, carregarDados]);
+
+  // Handler para Rolagem Infinita (onEndReached)
+  const lidarComFimDaLista = () => {
+    if (carregando || carregandoMais || fimDaLista) return;
+    carregarDados(paginaAtual + 1, filtro, true);
+  };
+
+  const renderItemPonto = ({ item }: { item: Ponto }) => (
+    <TouchableOpacity 
       style={styles.card}
-      onPress={() => navigation.navigate('TelaDetalhePonto', { pontoId: ponto.id })}
-      activeOpacity={0.8}
+      onPress={() => navigation.navigate('TelaDetalhePonto', { id: item.id })}
+      activeOpacity={0.7}
     >
-      <Text style={styles.titulo}>{ponto.nome}</Text>
-      <Text style={styles.textoSecundario}>📍 {ponto.endereco}</Text>
-      <Text style={styles.textoSecundario}>📦 {ponto.itens}</Text>
-      <Text style={styles.acaoTexto}>Toque para ver detalhes ›</Text>
+      <Text style={styles.nomePonto}>{item.nome}</Text>
+      <Text style={styles.detalhePonto}>Bairro: {item.bairro}</Text>
+      <Text style={styles.detalhePonto}>Endereço: {item.endereco}</Text>
+      <Text style={styles.tipoPonto}>Tipo: {item.tipo.toUpperCase()}</Text>
     </TouchableOpacity>
   );
-}
 
-export default function TelaListaPontos({ navigation }: any) {
-  const [inputBusca, setInputBusca] = useState('');
-  const [termoDebounced, setTermoDebounced] = useState('');
-
-  // Debounce de 400ms
-  useEffect(() => {
-    const handler = setTimeout(() => setTermoDebounced(inputBusca), 400);
-    return () => clearTimeout(handler);
-  }, [inputBusca]);
-
-  // Filtro Composto (Nome OU Itens)
-  const pontosFiltrados = useMemo(() => {
-    if (!termoDebounced.trim()) return pontosMock;
-    
-    const buscaNorm = normalizarString(termoDebounced.trim());
-    
-    return pontosMock.filter(ponto => {
-      const nomeNorm = normalizarString(ponto.nome);
-      const itensNorm = normalizarString(ponto.itens);
-      
-      // Retorna true se a busca bater no nome OU nos itens
-      return nomeNorm.includes(buscaNorm) || itensNorm.includes(buscaNorm);
-    });
-  }, [termoDebounced]);
-  
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.headerTitle}>Locais de Coleta</Text>
-        
+        <View style={styles.headerRow}>
+          <Text style={styles.titulo}>Pontos de Coleta</Text>
+          <TouchableOpacity 
+            style={styles.botaoHistorico}
+            onPress={() => navigation.navigate('TelaHistoricoDoacoes')}
+          >
+            <Text style={styles.textoBotaoHistorico}>Doações</Text>
+          </TouchableOpacity>
+        </View>
+
         <TextInput
           style={styles.inputBusca}
-          placeholder="Busque por ponto ou doação (ex: roupas)..."
-          value={inputBusca}
-          onChangeText={setInputBusca}
+          placeholder="Filtrar por nome ou bairro..."
+          placeholderTextColor={tema.cores.textoSuave}
+          value={filtro}
+          onChangeText={setFiltro}
+          autoCorrect={false}
+          clearButtonMode="while-editing"
         />
 
-        <BotaoComIcone
-          titulo="Ver Minhas Doações" 
-          nomeIcone="heart-outline" 
-          corFundo="#1B3A5C"
-          onPress={() => navigation.navigate('TelaHistoricoDoacoes')} 
-        />
-        
-        <FlatList
-          data={pontosFiltrados}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PontoItem ponto={item} navigation={navigation} />}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          ListEmptyComponent={
-            <Text style={styles.textoVazio}>Nenhum local encontrado para "{termoDebounced}".</Text>
-          }
-        />
+        {erro ? (
+          <View style={styles.containerErro}>
+            <Text style={styles.textoErro}>{erro}</Text>
+            <TouchableOpacity style={styles.botaoRetry} onPress={() => carregarDados(0, filtro, false)}>
+              <Text style={styles.textoBotaoRetry}>Tentar Novamente</Text>
+            </TouchableOpacity>
+          </View>
+        ) : carregando && pontos.length === 0 ? (
+          <View style={styles.centralizado}>
+            <ActivityIndicator size="large" color={tema.cores.primaria} />
+            <Text style={styles.textoCarregando}>Carregando pontos da API...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={pontos}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItemPonto}
+            contentContainerStyle={styles.listaContainer}
+            onEndReached={lidarComFimDaLista}
+            onEndReachedThreshold={0.3}
+            ListFooterComponent={
+              carregandoMais ? (
+                <View style={styles.footerLoader}>
+                  <ActivityIndicator size="small" color={tema.cores.primaria} />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              !carregando ? (
+                <View style={styles.centralizado}>
+                  <Text style={styles.textoVazio}>Nenhum ponto encontrado.</Text>
+                </View>
+              ) : null
+            }
+          />
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
+// ... dentro do StyleSheet.create da TelaListaPontos
 const styles = StyleSheet.create({
-  safeArea: { flex:1, backgroundColor: '#F5F5F5' },
-  container: { flex: 1, padding: 16 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1B3A5C', marginBottom: 16 },
+  safeArea: { flex: 1, backgroundColor: tema.cores.fundo },
+  container: { flex: 1, padding: tema.espacamento.m },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tema.espacamento.m },
+  titulo: { fontSize: 22, fontWeight: tema.tipografia.peso.negrito, color: tema.cores.textoForte },
+  botaoHistorico: { backgroundColor: tema.cores.primaria, paddingVertical: 8, paddingHorizontal: 12, borderRadius: tema.bordas.padrao },
+  textoBotaoHistorico: { color: '#FFF', fontWeight: 'bold' },
   inputBusca: {
-    minHeight: 50, backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 16,
-    marginBottom: 16, borderWidth: 1, borderColor: '#E0E0E0', fontSize: 16
+    backgroundColor: tema.cores.cartao,
+    borderWidth: 1,
+    borderColor: tema.cores.borda,
+    borderRadius: tema.bordas.padrao,
+    padding: tema.espacamento.m,
+    fontSize: tema.tipografia.tamanho.corpo,
+    color: tema.cores.textoForte,
+    marginBottom: tema.espacamento.m,
   },
-  botaoDoacoes: 
-  { backgroundColor: tema.cores.primaria, height: 50, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 16, elevation: 2 },
-  textoBotao: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  textoVazio: { textAlign: 'center', marginTop: 24, fontSize: 16, color: '#7F8C8D' },
-  card: { 
-    backgroundColor: '#FFF', padding: 16, marginBottom: 12, 
-    borderRadius: 8, 
-    elevation: 2 },
-  titulo: { fontSize: 18, fontWeight: 'bold', color: '#333', marginBottom: 4 },
-  textoSecundario: { fontSize: 14, color: '#4A4A4A', marginBottom: 2 },
-  acaoTexto: { fontSize: 12, color: '#2980B9', marginTop: 8, fontWeight: 'bold' }
+  card: {
+    backgroundColor: tema.cores.cartao,
+    borderRadius: tema.bordas.padrao,
+    borderWidth: 1,
+    borderColor: tema.cores.borda,
+    padding: tema.espacamento.m,
+    marginBottom: tema.espacamento.m,
+    elevation: 1,
+  },
+  nomePonto: { fontSize: tema.tipografia.tamanho.subtitulo, fontWeight: 'bold', color: tema.cores.textoForte, marginBottom: 4 },
+  detalhePonto: { fontSize: tema.tipografia.tamanho.corpo, color: tema.cores.textoSuave, marginBottom: 2 },
+  tipoPonto: { fontSize: tema.tipografia.tamanho.pequeno, fontWeight: 'bold', color: tema.cores.sucesso, marginTop: 4 },
+  centralizado: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  textoCarregando: { marginTop: 12, color: tema.cores.textoSuave },
+  textoVazio: { color: tema.cores.textoSuave, fontSize: tema.tipografia.tamanho.corpo, textAlign: 'center' },
+  containerErro: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  textoErro: { color: '#C62828', textAlign: 'center', marginBottom: 16, fontSize: tema.tipografia.tamanho.corpo },
+  botaoRetry: { backgroundColor: tema.cores.primaria, paddingVertical: 10, paddingHorizontal: 20, borderRadius: tema.bordas.padrao },
+  textoBotaoRetry: { color: '#FFF', fontWeight: 'bold' },
+  footerLoader: { paddingVertical: 16, alignItems: 'center' },  
+  listaContainer: { paddingBottom: tema.espacamento.g  }
 });
