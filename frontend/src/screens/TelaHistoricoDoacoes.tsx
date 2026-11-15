@@ -71,7 +71,7 @@ export default function TelaHistoricoDoacoes() {
     return (
       <TouchableOpacity 
         style={styles.cardDoacao}
-        onPress={() => navigation.navigate('TelaDetalheDoacao', { doacao: item })}
+        onPress={() => navigation.navigate('TelaDetalheDoacao', { id: item.id })}
         activeOpacity={0.7}
       >
         <View style={styles.cardHeader}>
