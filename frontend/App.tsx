@@ -10,14 +10,8 @@ import { doacoesMock } from './src/data/doacoesMock';
 import { pontosMock } from './src/data/pontosMock';
 import TelaHistoricoDoacoes from './src/screens/TelaHistoricoDoacoes';
 import TelaDetalheDoacao from './src/screens/TelaDetalheDoacao';
-
-export type RootStackParamList = {
-  TelaListaPontos: undefined;
-  TelaDetalhePonto: { pontoId: string };
-  TelaFormularioDoacao: undefined;
-  TelaHistoricoDoacoes: undefined;
-  TelaDetalheDoacao: { doacao: Doacao };
-};
+import { RootStackParamList } from './src/navigation/Navigation';
+import TelaFormularioPonto from './src/screens/TelaFormularioPonto';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -59,11 +53,10 @@ export default function App() {
           options={{ title: 'Minhas Doações' }} 
         />
 
-
-
-
-
-
+        <Stack.Screen 
+          name="TelaFormularioPonto" 
+          component={TelaFormularioPonto} 
+        />
 
       </Stack.Navigator>
     </NavigationContainer>

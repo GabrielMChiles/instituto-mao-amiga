@@ -1,83 +1,162 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+
+import { tema } from '../themes';
+import { RootStackParamList } from '../navigation/Navigation';
 import { Ponto } from '../models/Ponto';
-import { Doacao } from '../models/Doacao';
+import { deletarPonto, getPontoPorId } from '../service/pontoService';
 
-// CONTRATO ESTRITO: Fim da era do 'any'
-type Props = {
-  route: {
-    params: {
-      pontoId: string;
-    };
+type Props = NativeStackScreenProps<RootStackParamList, 'TelaDetalhePonto'>;
+
+export default function TelaDetalhePonto({ route, navigation }: Props) {
+  const { id } = route.params;
+  const [ponto, setPonto] = useState<Ponto | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      async function buscarDetalhes() {
+        setCarregando(true);
+        setErro(null);
+        try {
+          const dados = await getPontoPorId(id);
+          if (ativo) setPonto(dados);
+        } catch (err: any) {
+          if (ativo) setErro('Ponto não encontrado (404) ou erro de conexão.');
+        } finally {
+          if (ativo) setCarregando(false);
+        }
+      }
+      buscarDetalhes();
+      return () => { ativo = false; };
+    }, [id])
+  );
+
+  const confirmarExclusao = () => {
+    Alert.alert(
+      'Confirmar Exclusão',
+      'Deseja realmente excluir este ponto de coleta?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Excluir', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              await deletarPonto(id);
+              Alert.alert('Sucesso', 'Ponto excluído com sucesso.');
+              navigation.goBack();
+            } catch (err) {
+              Alert.alert('Erro', 'Não foi possível excluir o ponto.');
+            }
+          } 
+        }
+      ]
+    );
   };
-  pontos: Ponto[];
-  doacoes: Doacao[];
-};
 
-export default function TelaDetalhePonto({ route, pontos, doacoes }: Props) {
-  const { pontoId } = route.params;
-
-  // Busca o ponto na lista injetada (Fonte de Verdade)
-  const ponto = pontos.find((p) => p.id === pontoId);
-
-  // Filtro de Performance: Acha as doações APENAS deste ponto
-  const estoqueLocal = useMemo(() => {
-    return doacoes.filter((d) => d.pontoDestinoId === pontoId);
-  }, [doacoes, pontoId]);
-
-  // Null Pointer Defense
-  if (!ponto) {
+  if (carregando) {
     return (
-      <View style={styles.containerCenter}>
-        <Text style={styles.erroTexto}>Ponto de coleta não encontrado.</Text>
-      </View>
+      <SafeAreaView style={[styles.safeArea, styles.centralizado]}>
+        <ActivityIndicator size="large" color={tema.cores.primaria} />
+        <Text style={styles.textoCarregando}>Carregando dados do ponto...</Text>
+      </SafeAreaView>
     );
   }
 
-  // Renderizador individual do item de estoque
-  const renderItemEstoque = ({ item }: { item: Doacao }) => (
-    <View style={styles.itemEstoque}>
-      <Text style={styles.textoForte}>{item.tipoItem}</Text>
-      <Text style={styles.texto}>Qtd: {item.quantidade}</Text>
-      <Text style={styles.textoDescricao}>{item.descricao}</Text>
-    </View>
-  );
+  if (erro || !ponto) {
+    return (
+      <SafeAreaView style={[styles.safeArea, styles.centralizado]}>
+        <Ionicons name="alert-circle-outline" size={48} color="#C62828" />
+        <Text style={styles.textoErro}>{erro || 'Ponto não encontrado.'}</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      {/* SEÇÃO 1: Dados do Ponto */}
-      <View style={styles.card}>
-        <Text style={styles.titulo}>{ponto.nome}</Text>
-        <Text style={styles.texto}>📍 {ponto.endereco}</Text>
-        <Text style={styles.texto}>🕒 {ponto.horario}</Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.card}>
+          <Text style={styles.nome}>{ponto.nome}</Text>
+          <Text style={styles.label}>Bairro:</Text>
+          <Text style={styles.valor}>{ponto.bairro}</Text>
 
-      {/* SEÇÃO 2: Lista de Estoque (Relacionamento 1 para N) 
-      <Text style={styles.subtitulo}>Estoque Atual de Doações</Text>
-      <FlatList
-        data={estoqueLocal}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItemEstoque}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        ListEmptyComponent={
-          <Text style={styles.textoVazio}>Nenhuma doação registrada para este local ainda.</Text>
-        }
-      />*/}
-    </View>
+          <Text style={styles.label}>Endereço:</Text>
+          <Text style={styles.valor}>{ponto.endereco}</Text>
+
+          <Text style={styles.label}>Horário de Funcionamento:</Text>
+          <Text style={styles.valor}>{ponto.horario}</Text>
+
+          <Text style={styles.label}>Tipo:</Text>
+          <Text style={styles.tipo}>{ponto.tipo}</Text>
+        </View>
+
+        <View style={styles.botoesContainer}>
+          <TouchableOpacity 
+            style={styles.botaoEditar}
+            onPress={() => navigation.navigate('TelaFormularioPonto', { pontoParaEditar: ponto })}
+          >
+            <Ionicons name="create-outline" size={20} color="#FFF" />
+            <Text style={styles.textoBotao}>Editar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.botaoExcluir}
+            onPress={confirmarExclusao}
+          >
+            <Ionicons name="trash-outline" size={20} color="#FFF" />
+            <Text style={styles.textoBotao}>Excluir</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F5F5', padding: 16 },
-  containerCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: '#FFF', padding: 20, borderRadius: 12, elevation: 3, marginBottom: 16 },
-  titulo: { fontSize: 22, fontWeight: 'bold', color: '#1B3A5C', marginBottom: 12 },
-  subtitulo: { fontSize: 18, fontWeight: 'bold', color: '#1B3A5C', marginBottom: 12, marginTop: 8 },
-  texto: { fontSize: 16, color: '#4A4A4A', marginBottom: 4 },
-  textoForte: { fontSize: 16, fontWeight: 'bold', color: '#27AE60', marginBottom: 4 },
-  textoDescricao: { fontSize: 14, color: '#7F8C8D', fontStyle: 'italic', marginTop: 4 },
-  textoVazio: { textAlign: 'center', color: '#7F8C8D', marginTop: 20, fontSize: 15 },
-  erroTexto: { fontSize: 18, color: '#E74C3C', fontWeight: 'bold' },
-  itemEstoque: { backgroundColor: '#FFF', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 8 }
+  safeArea: { flex: 1, backgroundColor: tema.cores.fundo },
+  container: { flex: 1, padding: tema.espacamento.m, justifyContent: 'space-between' },
+  centralizado: { justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: {
+    backgroundColor: tema.cores.cartao,
+    borderRadius: tema.bordas.padrao,
+    borderWidth: 1,
+    borderColor: tema.cores.borda,
+    padding: tema.espacamento.g,
+    elevation: 2,
+  },
+  nome: { fontSize: 24, fontWeight: 'bold', color: tema.cores.textoForte, marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: 'bold', color: tema.cores.textoSuave, marginTop: 12 },
+  valor: { fontSize: 16, color: tema.cores.textoForte, marginTop: 2 },
+  tipo: { fontSize: 16, fontWeight: 'bold', color: tema.cores.sucesso, marginTop: 2, textTransform: 'uppercase' },
+  textoCarregando: { marginTop: 12, color: tema.cores.textoSuave },
+  textoErro: { color: '#C62828', fontSize: 16, textAlign: 'center', marginTop: 12 },
+  botoesContainer: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  botaoEditar: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#2980B9',
+    minHeight: 48,
+    borderRadius: tema.bordas.padrao,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8
+  },
+  botaoExcluir: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#C62828',
+    minHeight: 48,
+    borderRadius: tema.bordas.padrao,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8
+  },
+  textoBotao: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
 });
