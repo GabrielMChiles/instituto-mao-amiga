@@ -16,48 +16,44 @@ import TelaFormularioPonto from './src/screens/TelaFormularioPonto';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const [doacoes, setDoacoes] = useState<Doacao[]>(doacoesMock);
-
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="TelaListaPontos">
-        
+      <Stack.Navigator 
+        initialRouteName="TelaListaPontos"
+        screenOptions={{
+          headerStyle: { backgroundColor: '#1B3A5C' },
+          headerTintColor: '#FFF',
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      >
         <Stack.Screen 
           name="TelaListaPontos" 
           component={TelaListaPontos} 
-          options={{ title: 'Instituto Mão Amiga' }} 
+          options={{ title: 'Pontos de Coleta' }}
         />
-
+        <Stack.Screen 
+          name="TelaHistoricoDoacoes" 
+          component={TelaHistoricoDoacoes} 
+          options={{ title: 'Histórico de Doações' }}
+        />
         <Stack.Screen 
           name="TelaFormularioDoacao" 
           component={TelaFormularioDoacao} 
         />
-
+        <Stack.Screen 
+          name="TelaDetalheDoacao" 
+          component={TelaDetalheDoacao} 
+          options={{ title: 'Detalhes da Doação' }}
+        />
         <Stack.Screen 
           name="TelaDetalhePonto" 
-          options={{ title: 'Detalhes' }}
-        >
-          {/* INJEÇÃO DE DEPENDÊNCIA */}
-          {(props) => <TelaDetalhePonto {...props} doacoes={doacoes} pontos={pontosMock} />}
-        </Stack.Screen>
-
-        <Stack.Screen 
-          name={"TelaHistoricoDoacoes"} 
-          component={TelaHistoricoDoacoes} 
-          options={{ title: 'Minhas Doações' }} 
+          component={TelaDetalhePonto} 
+          options={{ title: 'Detalhes do Ponto' }}
         />
-
-        <Stack.Screen 
-          name={"TelaDetalheDoacao"} 
-          component={TelaDetalheDoacao} 
-          options={{ title: 'Minhas Doações' }} 
-        />
-
         <Stack.Screen 
           name="TelaFormularioPonto" 
           component={TelaFormularioPonto} 
         />
-
       </Stack.Navigator>
     </NavigationContainer>
   );
