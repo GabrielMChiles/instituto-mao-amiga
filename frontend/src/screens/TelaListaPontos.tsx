@@ -179,16 +179,21 @@ export default function TelaListaPontos({ navigation }: Props) {
             ListFooterComponent={
               carregandoMais ? (
                 <View style={styles.footerLoader}>
-                  <ActivityIndicator size="small" color={tema.cores.primaria} />
+                  <ActivityIndicator
+                    size="small"
+                    color={tema.cores.primaria}
+                  />
                 </View>
-              ) : null
+              ) : undefined
             }
             ListEmptyComponent={
               !carregando ? (
                 <View style={styles.centralizado}>
-                  <Text style={styles.textoVazio}>Nenhum ponto encontrado.</Text>
+                  <Text style={styles.textoVazio}>
+                    Nenhum ponto encontrado.
+                  </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         )}

@@ -21,13 +21,15 @@
     },
     "plugins": [
       [
-    "expo-splash-screen",
-    {
-      "image": "./assets/splash-icon.png",
-      "backgroundColor": "#ffffff",
-      "resizeMode": "contain"
-    }
-      ]
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#ffffff",
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-status-bar",
+      "expo-font"
     ]
   }
 }
