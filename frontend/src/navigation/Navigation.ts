@@ -3,6 +3,7 @@ import { Ponto } from "../models/Ponto";
 
 export type RootStackParamList = {
   TelaListaPontos: undefined;
+  TelaMeusPontos: undefined;
   TelaHistoricoDoacoes: undefined;
   TelaFormularioDoacao: { doacaoParaEditar?: Doacao } | undefined;
   TelaDetalheDoacao: { id: string };
