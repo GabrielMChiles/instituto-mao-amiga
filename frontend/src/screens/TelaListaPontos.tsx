@@ -17,11 +17,13 @@ import { tema } from '../themes';
 import { RootStackParamList } from '../navigation/Navigation';
 import { Ponto } from '../models/Ponto';
 import { listarPontosPaginados, ultimaPagina } from '../service/pontoService';
+import { listarIdsFavoritos, alternarFavorito } from '../storage/favoritosStorage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TelaListaPontos'>;
 
 export default function TelaListaPontos({ navigation }: Props) {
   const [pontos, setPontos] = useState<Ponto[]>([]);
+  const [favoritosIds, setFavoritosIds] = useState<string[]>([]);
   const [paginaAtual, setPaginaAtual] = useState(0);
   const [filtro, setFiltro] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -51,49 +53,86 @@ export default function TelaListaPontos({ navigation }: Props) {
     }
   }, []);
 
-  // useFocusEffect garante que ao voltar da tela de Edição/Cadastro, a lista reflete o banco real
+  // Sincroniza favoritos do AsyncStorage e recarrega a lista da API sempre que a tela ganha foco
   useFocusEffect(
     useCallback(() => {
+      listarIdsFavoritos().then(setFavoritosIds);
       carregarDados(0, filtro, false);
     }, [filtro, carregarDados])
   );
+
+  const handleToggleFavorito = async (id: string) => {
+    const novosIds = await alternarFavorito(id);
+    setFavoritosIds(novosIds);
+  };
 
   const lidarComFimDaLista = () => {
     if (carregando || carregandoMais || fimDaLista) return;
     carregarDados(paginaAtual + 1, filtro, true);
   };
 
-  const renderItemPonto = ({ item }: { item: Ponto }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => navigation.navigate('TelaDetalhePonto', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardHeader}>
-        <Text style={styles.nomePonto}>{item.nome}</Text>
-        <Text style={[styles.tipoBadge, item.tipo === 'COLETA' ? styles.badgeColeta : styles.badgeDistribuicao]}>
-          {item.tipo}
-        </Text>
+  const renderItemPonto = ({ item }: { item: Ponto }) => {
+    const isFavorito = favoritosIds.includes(item.id);
+
+    return (
+      <View style={styles.card}>
+        <TouchableOpacity 
+          style={styles.cardConteudo}
+          onPress={() => navigation.navigate('TelaDetalhePonto', { id: item.id })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardHeader}>
+            <Text style={styles.nomePonto}>{item.nome}</Text>
+            <Text style={[styles.tipoBadge, item.tipo === 'COLETA' ? styles.badgeColeta : styles.badgeDistribuicao]}>
+              {item.tipo}
+            </Text>
+          </View>
+          <Text style={styles.detalhePonto}>Bairro: {item.bairro}</Text>
+          <Text style={styles.detalhePonto}>Endereço: {item.endereco}</Text>
+          <Text style={styles.detalhePonto}>Horário: {item.horario}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.botaoFavorito}
+          onPress={() => handleToggleFavorito(item.id)}
+          activeOpacity={0.6}
+          accessibilityLabel={isFavorito ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+        >
+          <Ionicons 
+            name={isFavorito ? 'heart' : 'heart-outline'} 
+            size={26} 
+            color={isFavorito ? '#E74C3C' : tema.cores.textoSuave} 
+          />
+        </TouchableOpacity>
       </View>
-      <Text style={styles.detalhePonto}>Bairro: {item.bairro}</Text>
-      <Text style={styles.detalhePonto}>Endereço: {item.endereco}</Text>
-      <Text style={styles.detalhePonto}>Horário: {item.horario}</Text>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
           <Text style={styles.titulo}>Pontos de Coleta</Text>
-          <TouchableOpacity 
-            style={styles.botaoHistorico}
-            onPress={() => navigation.navigate('TelaHistoricoDoacoes')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="heart-outline" size={18} color="#FFF" />
-            <Text style={styles.textoBotaoHistorico}>Doações</Text>
-          </TouchableOpacity>
+          
+          <View style={styles.headerBotoes}>
+            <TouchableOpacity 
+              style={styles.botaoMeusPontos}
+              onPress={() => navigation.navigate('TelaMeusPontos')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="heart" size={16} color="#FFF" />
+              <Text style={styles.textoBotaoHeader}>Meus Pontos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.botaoHistorico}
+              onPress={() => navigation.navigate('TelaHistoricoDoacoes')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="gift-outline" size={16} color="#FFF" />
+              <Text style={styles.textoBotaoHeader}>Doações</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* INPUT DE BUSCA */}
@@ -107,7 +146,7 @@ export default function TelaListaPontos({ navigation }: Props) {
           clearButtonMode="while-editing"
         />
 
-        {/* BOTÃO DE CADASTRO ESTÁTICO (Substitui o FAB que quebrava na Web) */}
+        {/* BOTÃO DE CADASTRO ESTÁTICO */}
         <TouchableOpacity 
           style={styles.botaoCadastrarPonto}
           onPress={() => navigation.navigate('TelaFormularioPonto', undefined)}
@@ -140,16 +179,21 @@ export default function TelaListaPontos({ navigation }: Props) {
             ListFooterComponent={
               carregandoMais ? (
                 <View style={styles.footerLoader}>
-                  <ActivityIndicator size="small" color={tema.cores.primaria} />
+                  <ActivityIndicator
+                    size="small"
+                    color={tema.cores.primaria}
+                  />
                 </View>
-              ) : null
+              ) : undefined
             }
             ListEmptyComponent={
               !carregando ? (
                 <View style={styles.centralizado}>
-                  <Text style={styles.textoVazio}>Nenhum ponto encontrado.</Text>
+                  <Text style={styles.textoVazio}>
+                    Nenhum ponto encontrado.
+                  </Text>
                 </View>
-              ) : null
+              ) : undefined
             }
           />
         )}
@@ -162,18 +206,32 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: tema.cores.fundo },
   container: { flex: 1, padding: tema.espacamento.m },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: tema.espacamento.m },
-  titulo: { fontSize: 22, fontWeight: tema.tipografia.peso.negrito, color: tema.cores.textoForte },
+  titulo: { fontSize: 20, fontWeight: tema.tipografia.peso.negrito, color: tema.cores.textoForte },
   
+  headerBotoes: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  botaoMeusPontos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E74C3C',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: tema.bordas.padrao,
+    gap: 4,
+  },
   botaoHistorico: { 
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: tema.cores.primaria, 
     paddingVertical: 8, 
-    paddingHorizontal: 12, 
+    paddingHorizontal: 10, 
     borderRadius: tema.bordas.padrao,
-    gap: 6
+    gap: 4
   },
-  textoBotaoHistorico: { color: '#FFF', fontWeight: 'bold' },
+  textoBotaoHeader: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 
   inputBusca: {
     backgroundColor: tema.cores.cartao,
@@ -186,7 +244,6 @@ const styles = StyleSheet.create({
     marginBottom: tema.espacamento.p,
   },
 
-  // BOTÃO PADRÃO ABAIXO DA BUSCA (Substitui o FAB desgovernado)
   botaoCadastrarPonto: {
     flexDirection: 'row',
     backgroundColor: tema.cores.sucesso,
@@ -204,19 +261,33 @@ const styles = StyleSheet.create({
   },
 
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: tema.cores.cartao,
     borderRadius: tema.bordas.padrao,
     borderWidth: 1,
     borderColor: tema.cores.borda,
-    padding: tema.espacamento.m,
     marginBottom: tema.espacamento.m,
     elevation: 1,
+    overflow: 'hidden',
+  },
+  cardConteudo: {
+    flex: 1,
+    padding: tema.espacamento.m,
+  },
+  botaoFavorito: {
+    width: 52,
+    minHeight: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: 8,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 6,
+    gap: 8,
   },
   nomePonto: { fontSize: tema.tipografia.tamanho.subtitulo, fontWeight: 'bold', color: tema.cores.textoForte, flex: 1 },
   tipoBadge: {

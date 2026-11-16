@@ -1,4 +1,4 @@
-export const SERVIDOR_URL = "http://localhost:8080";
+export const SERVIDOR_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080";
 const API_URL = `${SERVIDOR_URL}/api/v1`;
 
 async function requisitar<T>(endpoint: string, options?: RequestInit): Promise<T> {
